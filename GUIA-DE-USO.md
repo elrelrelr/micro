@@ -90,6 +90,8 @@ Para este flujo Bluetooth local, GitHub Pages sí basta.
 Se probó:
 - modo Bluetooth local por defecto,
 - ocultamiento de funciones no usadas,
+- diagnóstico en vivo,
+- detección de permiso denegado,
 - selector directo de salida cuando existe,
 - fallback a Bluetooth del sistema cuando no existe,
 - micrófono continuo,

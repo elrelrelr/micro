@@ -148,6 +148,8 @@ function createWindow(label, userAgent, baseUrl = BASE_URL, options = {}) {
     supportRtc = true,
     outputLabel = `${label} Salida`,
     selectedOutputLabel = `${label} Bluetooth`,
+    microphonePermissionState = 'prompt',
+    denyGetUserMedia = false,
   } = options;
 
   const dom = new JSDOM(html, {
@@ -158,6 +160,7 @@ function createWindow(label, userAgent, baseUrl = BASE_URL, options = {}) {
 
   const { window } = dom;
   const clipboardStore = { text: '' };
+  let currentMicrophonePermissionState = microphonePermissionState;
 
   Object.defineProperty(window.navigator, 'userAgent', {
     value: userAgent,
@@ -221,6 +224,12 @@ function createWindow(label, userAgent, baseUrl = BASE_URL, options = {}) {
 
   window.navigator.share = async ({ title, text, url }) => {
     clipboardStore.text = `${title || ''}\n${text || ''}\n${url || ''}`.trim();
+  };
+
+  window.navigator.permissions = {
+    async query() {
+      return { state: currentMicrophonePermissionState };
+    },
   };
 
   Object.defineProperty(window.HTMLMediaElement.prototype, 'srcObject', {
@@ -331,6 +340,11 @@ function createWindow(label, userAgent, baseUrl = BASE_URL, options = {}) {
         ];
       },
       async getUserMedia() {
+        if (denyGetUserMedia) {
+          currentMicrophonePermissionState = 'denied';
+          throw new window.DOMException('Permission denied', 'NotAllowedError');
+        }
+        currentMicrophonePermissionState = 'granted';
         return new FakeMediaStream([new FakeMediaStreamTrack('audio')]);
       },
       ...(supportDirectOutputPicker ? {
@@ -556,11 +570,28 @@ async function main() {
     },
   );
 
+  const deniedPhone = createWindow(
+    'TelefonoDenegado',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1',
+    BASE_URL,
+    {
+      supportDirectOutputPicker: false,
+      supportSinkChange: false,
+      supportRtc: false,
+      outputLabel: 'Parlante Bluetooth bloqueado',
+      selectedOutputLabel: 'Parlante Bluetooth bloqueado',
+      microphonePermissionState: 'prompt',
+      denyGetUserMedia: true,
+    },
+  );
+
   try {
     await waitFor(() => phone.window.__micRoomDebug?.snapshot?.(), { label: 'init telefono principal' });
     await waitFor(() => limitedPhone.window.__micRoomDebug?.snapshot?.(), { label: 'init telefono sin selector' });
+    await waitFor(() => deniedPhone.window.__micRoomDebug?.snapshot?.(), { label: 'init telefono denegado' });
     await waitFor(() => phone.window.__micRoomDebug.snapshot().serviceWorkerController === true, { label: 'SW telefono principal' });
     await waitFor(() => limitedPhone.window.__micRoomDebug.snapshot().serviceWorkerController === true, { label: 'SW telefono sin selector' });
+    await waitFor(() => deniedPhone.window.__micRoomDebug.snapshot().serviceWorkerController === true, { label: 'SW telefono denegado' });
 
     const phoneInit = phone.window.__micRoomDebug.snapshot();
     addCheck(
@@ -575,12 +606,20 @@ async function main() {
     addCheck(
       'Siguen visibles los controles útiles para Bluetooth',
       phoneInit.outputCardVisible === true
+        && phoneInit.diagnosticsSectionVisible === true
         && !phone.window.document.querySelector('#senderSettingsCard').classList.contains('d-none')
         && !phone.window.document.querySelector('#localModeControls').classList.contains('d-none'),
     );
     addCheck(
+      'Diagnóstico en vivo aparece desde el inicio',
+      phoneInit.diagnosticSummary.toLowerCase().includes('pulsar') || phoneInit.diagnosticSummary.toLowerCase().includes('probar'),
+      phoneInit.diagnosticSummary,
+    );
+    addCheck(
       'Service worker se registra en entorno simulado',
-      phone.window.__micRoomDebug.snapshot().serviceWorkerController === true && limitedPhone.window.__micRoomDebug.snapshot().serviceWorkerController === true,
+      phone.window.__micRoomDebug.snapshot().serviceWorkerController === true
+        && limitedPhone.window.__micRoomDebug.snapshot().serviceWorkerController === true
+        && deniedPhone.window.__micRoomDebug.snapshot().serviceWorkerController === true,
     );
 
     await click(phone.window, '#selectBtOutputBtn');
@@ -592,6 +631,8 @@ async function main() {
     await waitFor(() => phone.window.__micRoomDebug.snapshot().localPlaybackActive === true, { label: 'modo local continuo activo' });
     addCheck('Micrófono Bluetooth continuo inicia', phone.window.__micRoomDebug.snapshot().localPlaybackActive === true);
     addCheck('Micrófono continuo deja el track habilitado', phone.window.__micRoomDebug.snapshot().localTrack?.enabled === true);
+    addCheck('Diagnóstico marca permiso y captura cuando el micrófono arranca', /concedido/i.test(phone.window.__micRoomDebug.snapshot().diagnostics.permission) && /capturando/i.test(phone.window.__micRoomDebug.snapshot().diagnostics.capture));
+    addCheck('Diagnóstico resume que el emisor debería oírse al hablar', /deber[ií]a o[ií]rse|est[aá] hablando/i.test(phone.window.__micRoomDebug.snapshot().diagnosticSummary), phone.window.__micRoomDebug.snapshot().diagnosticSummary);
 
     await click(phone.window, '#localStopBtn');
     await waitFor(() => phone.window.__micRoomDebug.snapshot().localPlaybackActive === false, { label: 'modo local continuo detenido' });
@@ -656,11 +697,20 @@ async function main() {
     }, { timeout: 10000, label: 'local ptt detenido telefono sin selector' });
     addCheck('El Bluetooth local también se detiene correctamente en navegadores limitados', limitedPhone.window.__micRoomDebug.snapshot().localPlaybackActive === false);
 
+    const deniedPttButton = deniedPhone.window.document.querySelector('#localPttBtn');
+    deniedPttButton.dispatchEvent(new deniedPhone.window.PointerEvent('pointerdown', { bubbles: true }));
+    await waitFor(() => {
+      const s = deniedPhone.window.__micRoomDebug.snapshot();
+      return s.microphonePermissionState === 'denied' && /permiso|micr[oó]fono/i.test(s.diagnosticSummary);
+    }, { timeout: 10000, label: 'diagnostico permiso denegado' });
+    addCheck('Diagnóstico identifica permiso denegado del micrófono', /bloqueado|permiso/i.test(deniedPhone.window.__micRoomDebug.snapshot().diagnostics.permission));
+
     addWarning('Bluetooth real no se puede probar dentro de este sandbox porque no hay acceso a hardware Bluetooth.');
     addWarning('La salida Bluetooth final en el teléfono depende del navegador móvil y del sistema operativo reales; aquí validé la lógica, la UI y el fallback de salida por sistema.');
   } finally {
     phone.window.close();
     limitedPhone.window.close();
+    deniedPhone.window.close();
   }
 }
 

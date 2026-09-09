@@ -184,6 +184,58 @@
         </div>
       </section>
 
+      <section id="diagnosticsSection" class="card border-0 shadow-soft glass-card mb-4">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="section-icon bg-secondary-subtle text-secondary-emphasis">3</div>
+            <div>
+              <h2 class="h5 mb-1">Diagnóstico en vivo</h2>
+              <p class="text-body-secondary mb-0">Estas 5 luces te dicen exactamente en qué paso se rompe el audio.</p>
+            </div>
+          </div>
+
+          <div class="diagnostic-grid">
+            <div class="diagnostic-item">
+              <span id="diagPermissionDot" class="diagnostic-dot off" aria-hidden="true"></span>
+              <div>
+                <div class="diagnostic-title">1. Permiso de micrófono</div>
+                <div id="diagPermissionText" class="diagnostic-detail">Aún no revisado.</div>
+              </div>
+            </div>
+            <div class="diagnostic-item">
+              <span id="diagCaptureDot" class="diagnostic-dot off" aria-hidden="true"></span>
+              <div>
+                <div class="diagnostic-title">2. Micrófono capturando</div>
+                <div id="diagCaptureText" class="diagnostic-detail">Todavía no hay captura activa.</div>
+              </div>
+            </div>
+            <div class="diagnostic-item">
+              <span id="diagTrackDot" class="diagnostic-dot off" aria-hidden="true"></span>
+              <div>
+                <div class="diagnostic-title">3. Voz saliendo del emisor</div>
+                <div id="diagTrackText" class="diagnostic-detail">El emisor aún no está enviando o reproduciendo audio.</div>
+              </div>
+            </div>
+            <div class="diagnostic-item">
+              <span id="diagDestinationDot" class="diagnostic-dot off" aria-hidden="true"></span>
+              <div>
+                <div class="diagnostic-title">4. Destino listo</div>
+                <div id="diagDestinationText" class="diagnostic-detail">Esperando a que el parlante o receptor quede listo.</div>
+              </div>
+            </div>
+            <div class="diagnostic-item">
+              <span id="diagOutputDot" class="diagnostic-dot off" aria-hidden="true"></span>
+              <div>
+                <div class="diagnostic-title">5. Salida de audio</div>
+                <div id="diagOutputText" class="diagnostic-detail">Aún no se ha confirmado la ruta de salida.</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="diagSummary" class="alert alert-secondary border-0 mb-0 status-panel mt-3">Resumen: todavía no se ha intentado abrir el micrófono.</div>
+        </div>
+      </section>
+
       <section id="senderSettingsCard" class="card border-0 shadow-soft glass-card mb-4 d-none">
         <div class="card-body p-4">
           <div class="d-flex align-items-center gap-3 mb-3">

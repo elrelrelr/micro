@@ -8,6 +8,13 @@ Mic Room quedó enfocado ahora en un uso muy simple:
 
 La interfaz publicada oculta las funciones de sala, receptor, QR y conexión por red para concentrarse en el flujo Bluetooth local.
 
+Además ahora muestra un bloque de **Diagnóstico en vivo** con 5 luces:
+- permiso de micrófono,
+- captura del emisor,
+- voz saliendo del emisor,
+- destino listo,
+- salida de audio.
+
 El proyecto todavía conserva el código de sala en el repositorio, pero en esta versión visible de la web quedó escondido para no confundir.
 
 ## Flujo actual

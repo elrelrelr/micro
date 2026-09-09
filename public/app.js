@@ -30,6 +30,18 @@ const els = {
   receiverOutputActions: document.getElementById('receiverOutputActions'),
   outputActionsRow: document.getElementById('outputActionsRow'),
   localModeControls: document.getElementById('localModeControls'),
+  diagnosticsSection: document.getElementById('diagnosticsSection'),
+  diagPermissionDot: document.getElementById('diagPermissionDot'),
+  diagPermissionText: document.getElementById('diagPermissionText'),
+  diagCaptureDot: document.getElementById('diagCaptureDot'),
+  diagCaptureText: document.getElementById('diagCaptureText'),
+  diagTrackDot: document.getElementById('diagTrackDot'),
+  diagTrackText: document.getElementById('diagTrackText'),
+  diagDestinationDot: document.getElementById('diagDestinationDot'),
+  diagDestinationText: document.getElementById('diagDestinationText'),
+  diagOutputDot: document.getElementById('diagOutputDot'),
+  diagOutputText: document.getElementById('diagOutputText'),
+  diagSummary: document.getElementById('diagSummary'),
   roomSendControlsCard: document.getElementById('roomSendControlsCard'),
   roomMicControls: document.getElementById('roomMicControls'),
   startMicBtn: document.getElementById('startMicBtn'),
@@ -119,6 +131,9 @@ const state = {
   selectedOutputLabel: 'Salida del sistema',
   canChangeSink: false,
   canUseDirectOutputPicker: false,
+  microphonePermissionState: 'unknown',
+  detectedBluetoothOutputLabel: '',
+  lastAudioErrorMessage: '',
   deferredInstallPrompt: null,
   qrDataUrl: '',
   previewToken: 0,
@@ -155,11 +170,13 @@ function setRoomStatus(text) {
   } else {
     els.statusText.classList.add('text-bg-dark', 'border-secondary-subtle');
   }
+  refreshDiagnostics();
 }
 
 function setLocalStatus(text, theme = 'secondary') {
   els.localModeStatus.textContent = text;
   els.localModeStatus.className = `alert alert-${theme} border-0 mb-0 status-panel`;
+  refreshDiagnostics();
 }
 
 function setInstallStatus(text, extraClass = 'text-body-secondary') {
@@ -179,6 +196,148 @@ function showToast(message, tone = 'success') {
     toast.style.transform = 'translateY(-4px)';
   }, 2600);
   window.setTimeout(() => toast.remove(), 3000);
+}
+
+async function getMicrophonePermissionState() {
+  try {
+    if (!navigator.permissions?.query) return 'unknown';
+    const result = await navigator.permissions.query({ name: 'microphone' });
+    return result?.state || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+function isPermissionDeniedError(error) {
+  const name = error?.name || '';
+  const rawMessage = error?.message || String(error || '');
+  return /NotAllowedError|PermissionDeniedError|SecurityError/i.test(name) || /permission|denied|not allowed/i.test(rawMessage);
+}
+
+async function describeAudioStartError(error, target = 'local') {
+  const rawMessage = error?.message || String(error || 'Error desconocido');
+  const permissionState = await getMicrophonePermissionState();
+  const isPermissionError = isPermissionDeniedError(error);
+  if (!isPermissionError) return `No pude iniciar el audio ${target === 'room' ? 'de la sala' : 'Bluetooth local'}. ${rawMessage}`;
+
+  const bits = [
+    `No tengo permiso para usar el micrófono (${permissionState}).`,
+    'Revisa el permiso del sitio en el navegador y el permiso de micrófono del navegador en el sistema.',
+  ];
+  if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    bits.push('En iPhone/iPad: Ajustes del dispositivo → Safari (o tu navegador) → Micrófono → Permitir, y también revisa el permiso del sitio abierto.');
+  } else if (/Android/i.test(navigator.userAgent)) {
+    bits.push('En Android: mantén el navegador con permiso de micrófono en Ajustes del sistema y revisa el permiso del sitio.');
+  }
+  bits.push(`Luego vuelve a pulsar el botón para ${target === 'room' ? 'transmitir a la sala' : 'hablar por Bluetooth'}.`);
+  return bits.join(' ');
+}
+
+function setDiagnosticNode(dotEl, textEl, stateName, text) {
+  if (dotEl) {
+    dotEl.className = `diagnostic-dot ${stateName}`;
+  }
+  if (textEl) {
+    textEl.textContent = text;
+  }
+}
+
+function schedulePermissionRefresh() {
+  getMicrophonePermissionState()
+    .then((permissionState) => {
+      state.microphonePermissionState = permissionState || 'unknown';
+      refreshDiagnostics();
+    })
+    .catch(() => {});
+}
+
+function refreshDiagnostics() {
+  const permissionState = state.rawTrack?.readyState === 'live'
+    ? 'granted'
+    : state.microphonePermissionState || 'unknown';
+
+  if (permissionState === 'granted') {
+    setDiagnosticNode(els.diagPermissionDot, els.diagPermissionText, 'ok', 'Permiso concedido. El navegador puede abrir el micrófono.');
+  } else if (permissionState === 'denied') {
+    setDiagnosticNode(els.diagPermissionDot, els.diagPermissionText, 'error', 'Permiso bloqueado. Debes habilitar el micrófono para este sitio y para el navegador.');
+  } else if (permissionState === 'prompt') {
+    setDiagnosticNode(els.diagPermissionDot, els.diagPermissionText, 'warn', 'Falta aceptar el permiso. Pulsa uno de los botones para hablar y permite el micrófono.');
+  } else {
+    setDiagnosticNode(els.diagPermissionDot, els.diagPermissionText, 'warn', 'El navegador aún no confirmó el permiso. Haz una prueba hablando para forzar la solicitud.');
+  }
+
+  if (state.rawTrack?.readyState === 'live') {
+    setDiagnosticNode(els.diagCaptureDot, els.diagCaptureText, 'ok', 'El micrófono ya está capturando audio en el emisor.');
+  } else if (permissionState === 'denied') {
+    setDiagnosticNode(els.diagCaptureDot, els.diagCaptureText, 'error', 'No hay captura porque el micrófono fue bloqueado.');
+  } else {
+    setDiagnosticNode(els.diagCaptureDot, els.diagCaptureText, 'off', 'Todavía no hay captura activa del micrófono.');
+  }
+
+  if (state.localTrack?.readyState === 'live' && state.localTrack.enabled) {
+    setDiagnosticNode(els.diagTrackDot, els.diagTrackText, 'ok', 'La voz del emisor está activa y lista para sonar o enviarse.');
+  } else if (state.localTrack?.readyState === 'live') {
+    setDiagnosticNode(els.diagTrackDot, els.diagTrackText, 'warn', 'El micrófono está abierto, pero la voz está silenciada o esperando el botón de hablar.');
+  } else {
+    setDiagnosticNode(els.diagTrackDot, els.diagTrackText, 'off', 'El emisor aún no tiene un track de audio activo.');
+  }
+
+  if (isBluetoothOnlyMode() || isBluetoothTarget()) {
+    if (state.localPlaybackActive) {
+      setDiagnosticNode(els.diagDestinationDot, els.diagDestinationText, 'ok', 'El destino local está activo: este mismo teléfono o PC debería estar reproduciendo el audio.');
+    } else {
+      setDiagnosticNode(els.diagDestinationDot, els.diagDestinationText, 'warn', 'El parlante o audífono local está esperando a que pulses hablar o actives el modo continuo.');
+    }
+  } else if (isReceiverMode()) {
+    if (hasRemoteAudioActive()) {
+      setDiagnosticNode(els.diagDestinationDot, els.diagDestinationText, 'ok', 'El receptor ya está recibiendo audio remoto.');
+    } else if (state.peers.size > 0) {
+      setDiagnosticNode(els.diagDestinationDot, els.diagDestinationText, 'warn', 'El receptor ve al emisor, pero todavía no entra audio.');
+    } else {
+      setDiagnosticNode(els.diagDestinationDot, els.diagDestinationText, 'off', 'Aún no hay emisor conectado a este receptor.');
+    }
+  } else {
+    const connectedPeers = [...state.peers.values()].filter((peer) => peer.pc?.connectionState === 'connected').length;
+    if (connectedPeers > 0) {
+      setDiagnosticNode(els.diagDestinationDot, els.diagDestinationText, 'ok', `Hay ${connectedPeers} receptor(es) conectado(s) y listos para oír.`);
+    } else if (state.joined) {
+      setDiagnosticNode(els.diagDestinationDot, els.diagDestinationText, 'warn', 'La sala existe, pero todavía falta que el receptor termine de conectar.');
+    } else {
+      setDiagnosticNode(els.diagDestinationDot, els.diagDestinationText, 'off', 'Todavía no hay receptor conectado.');
+    }
+  }
+
+  if (state.canUseDirectOutputPicker && state.preferredSinkId && state.preferredSinkId !== 'default') {
+    setDiagnosticNode(els.diagOutputDot, els.diagOutputText, 'ok', `Salida elegida desde la web: ${state.selectedOutputLabel || 'dispositivo de audio'}.`);
+  } else if (state.canChangeSink && state.detectedBluetoothOutputLabel) {
+    setDiagnosticNode(els.diagOutputDot, els.diagOutputText, 'warn', `El parlante “${state.detectedBluetoothOutputLabel}” fue detectado. Si no suena, selecciónalo arriba.`);
+  } else if (state.detectedBluetoothOutputLabel) {
+    setDiagnosticNode(els.diagOutputDot, els.diagOutputText, 'warn', `Se detectó “${state.detectedBluetoothOutputLabel}”, pero este navegador depende de la salida Bluetooth del sistema.`);
+  } else if (!state.canChangeSink) {
+    setDiagnosticNode(els.diagOutputDot, els.diagOutputText, 'warn', 'Este navegador depende por completo de la salida multimedia del sistema.');
+  } else {
+    setDiagnosticNode(els.diagOutputDot, els.diagOutputText, 'off', 'No se ha elegido una salida específica todavía.');
+  }
+
+  let summary = 'Resumen: listo para probar.';
+  if (state.lastAudioErrorMessage) {
+    summary = `Resumen: ${state.lastAudioErrorMessage}`;
+  } else if (permissionState === 'denied') {
+    summary = 'Resumen: el bloqueo actual está en el permiso del micrófono.';
+  } else if (!state.rawTrack) {
+    summary = 'Resumen: el siguiente paso es pulsar hablar para que el navegador pida el micrófono.';
+  } else if (state.localTrack && !state.localTrack.enabled) {
+    summary = 'Resumen: el micrófono ya abrió, pero la voz está silenciada o esperando el gesto de hablar.';
+  } else if ((isBluetoothOnlyMode() || isBluetoothTarget()) && !state.canChangeSink) {
+    summary = 'Resumen: la app ya puede hablar, pero la salida final depende del Bluetooth configurado en el sistema.';
+  } else if ((isBluetoothOnlyMode() || isBluetoothTarget()) && state.localPlaybackActive) {
+    summary = `Resumen: el emisor está hablando y debería oírse por ${state.selectedOutputLabel || state.detectedBluetoothOutputLabel || 'la salida del sistema'}.`;
+  } else if (state.roomSendActive || hasRemoteAudioActive()) {
+    summary = 'Resumen: el audio ya está fluyendo; si no lo oyes, el bloqueo probable está en la reproducción o la salida elegida.';
+  }
+  if (els.diagSummary) {
+    els.diagSummary.textContent = summary;
+  }
 }
 
 function setMeter(percent, text) {
@@ -648,6 +807,7 @@ function renderWorkflowMode() {
     refreshPrimaryStatus();
     updateButtons();
     updatePttUi();
+    refreshDiagnostics();
     return;
   }
 
@@ -669,6 +829,7 @@ function renderWorkflowMode() {
     refreshPrimaryStatus();
     updateButtons();
     updatePttUi();
+    refreshDiagnostics();
     return;
   }
 
@@ -720,6 +881,7 @@ function renderWorkflowMode() {
   refreshPrimaryStatus();
   updateButtons();
   updatePttUi();
+  refreshDiagnostics();
 }
 
 function setDeviceMode(mode, { persist = true, announce = true, togglePanel = true } = {}) {
@@ -963,6 +1125,7 @@ async function populateDevices() {
     const detectedBtOutput = outputs.find((output) => /bluetooth|bt|buds|aud[ií]fono|parlante|speaker|head/i.test(output.label || ''));
     state.canChangeSink = canChooseSink;
     state.canUseDirectOutputPicker = canUseDirectOutputPicker;
+    state.detectedBluetoothOutputLabel = detectedBtOutput?.label || '';
     if (!canChooseSink) {
       els.outputSelect.disabled = true;
       els.localOutputStatus.textContent = detectedBtOutput
@@ -1093,6 +1256,8 @@ async function ensureAudioPipeline() {
   state.rawTrack = rawTrack;
   state.processedStream = destination.stream;
   state.localTrack = destination.stream.getAudioTracks()[0] || rawTrack;
+  state.microphonePermissionState = 'granted';
+  state.lastAudioErrorMessage = '';
   state.processingContext = ctx;
   state.sourceNode = source;
   state.analyserNode = analyser;
@@ -1104,6 +1269,7 @@ async function ensureAudioPipeline() {
   syncTalkModeState(false);
   await applyOutputSelection();
   startMeter();
+  refreshDiagnostics();
 
   rawTrack.onended = () => {
     if (state.rawTrack === rawTrack) {
@@ -1182,6 +1348,7 @@ async function hardStopAllAudio(reason = 'Audio detenido.') {
   state.localPlaybackActive = false;
   state.roomSendActive = false;
   state.pttPressed = false;
+  state.lastAudioErrorMessage = reason;
   for (const peer of state.peers.values()) {
     await removeLocalTrackFromPeer(peer);
   }
@@ -1233,11 +1400,13 @@ async function startLocalMode({ pushToTalk = false, silentToast = false } = {}) 
   }
 
   try {
+    await ensureAudioPipeline();
     await unlockAudio();
     state.localPlaybackActive = true;
     state.localPttActive = Boolean(pushToTalk);
-    await ensureAudioPipeline();
+    syncSendTrackState();
     await syncLocalPlayback();
+    state.lastAudioErrorMessage = '';
     updateButtons();
     renderWorkflowMode();
     setLocalStatus(
@@ -1254,10 +1423,15 @@ async function startLocalMode({ pushToTalk = false, silentToast = false } = {}) 
   } catch (error) {
     state.localPlaybackActive = false;
     state.localPttActive = false;
+    if (isPermissionDeniedError(error)) {
+      state.microphonePermissionState = 'denied';
+    }
+    const friendlyError = await describeAudioStartError(error, 'local');
+    state.lastAudioErrorMessage = friendlyError;
     renderWorkflowMode();
-    setLocalStatus('No pude iniciar el Bluetooth local.', 'danger');
+    setLocalStatus(friendlyError, 'danger');
     log(`No pude iniciar el modo local: ${error.message}`, 'error');
-    alert(`No pude iniciar el Bluetooth local. ${error.message}`);
+    alert(friendlyError);
     return false;
   }
 }
@@ -1265,6 +1439,7 @@ async function startLocalMode({ pushToTalk = false, silentToast = false } = {}) 
 async function stopLocalMode({ silentToast = false } = {}) {
   state.localPlaybackActive = false;
   state.localPttActive = false;
+  state.lastAudioErrorMessage = '';
   await cleanupAudioIfIdle();
   updateButtons();
   renderWorkflowMode();
@@ -1522,6 +1697,7 @@ function refreshPeerCard(peerId) {
   refreshPrimaryStatus();
   updateButtons();
   updatePttUi();
+  refreshDiagnostics();
 }
 
 function removePeerCard(peerId) {
@@ -1534,6 +1710,7 @@ function removePeerCard(peerId) {
   refreshPrimaryStatus();
   updateButtons();
   updatePttUi();
+  refreshDiagnostics();
 }
 
 async function sendSignal(to, data) {
@@ -1748,15 +1925,17 @@ async function startRoomMic() {
   }
 
   try {
+    await ensureAudioPipeline();
     await unlockAudio();
     state.roomSendActive = true;
-    await ensureAudioPipeline();
+    syncSendTrackState();
     for (const peer of state.peers.values()) {
       await addLocalTrackToPeer(peer, state.processedStream);
     }
     syncTalkModeState(false);
     await applyAudioQualityToAllPeers();
     await syncLocalPlayback();
+    state.lastAudioErrorMessage = '';
     updateButtons();
     updatePttUi();
     renderWorkflowMode();
@@ -1764,11 +1943,16 @@ async function startRoomMic() {
     log(`Micrófono de sala activo a ${getBitrateKbps()} kbps.`, 'success');
   } catch (error) {
     state.roomSendActive = false;
+    if (isPermissionDeniedError(error)) {
+      state.microphonePermissionState = 'denied';
+    }
+    const friendlyError = await describeAudioStartError(error, 'room');
+    state.lastAudioErrorMessage = friendlyError;
     updateButtons();
     updatePttUi();
     renderWorkflowMode();
     log(`No pude activar el micrófono de sala: ${error.message}`, 'error');
-    alert(`No pude activar el micrófono para la sala. ${error.message}`);
+    alert(friendlyError);
   }
 }
 
@@ -2040,6 +2224,7 @@ function getDebugSnapshot() {
     peerSummaryText: els.peerSummaryText.textContent,
     connectButtonLabel: els.connectBtn.textContent,
     outputCardVisible: !els.outputCard?.classList.contains('d-none'),
+    diagnosticsSectionVisible: !els.diagnosticsSection?.classList.contains('d-none'),
     roomSendControlsVisible: !els.roomSendControlsCard?.classList.contains('d-none'),
     roomMicControlsVisible: !els.roomMicControls?.classList.contains('d-none'),
     shareBlockVisible: !els.shareBlock?.classList.contains('d-none'),
@@ -2067,6 +2252,15 @@ function getDebugSnapshot() {
     installButtonVisible: !els.installBtn.classList.contains('d-none'),
     localModeStatus: els.localModeStatus?.textContent || '',
     localOutputStatus: els.localOutputStatus?.textContent || '',
+    microphonePermissionState: state.microphonePermissionState,
+    diagnosticSummary: els.diagSummary?.textContent || '',
+    diagnostics: {
+      permission: els.diagPermissionText?.textContent || '',
+      capture: els.diagCaptureText?.textContent || '',
+      track: els.diagTrackText?.textContent || '',
+      destination: els.diagDestinationText?.textContent || '',
+      output: els.diagOutputText?.textContent || '',
+    },
     localMonitorActive: needsLocalMonitor(),
     filterSettings: getFilterSettings(),
     peers: [...state.peers.values()].map((peer) => {
@@ -2119,7 +2313,10 @@ function wirePttEvents() {
     if (document.hidden) {
       handlePttEnd();
       handleLocalPttEnd();
+      return;
     }
+    schedulePermissionRefresh();
+    refreshDiagnostics();
   });
 }
 
@@ -2264,6 +2461,7 @@ function wireUi() {
 
 async function init() {
   wireUi();
+  schedulePermissionRefresh();
   const lacksRequiredAudio = !navigator.mediaDevices?.getUserMedia;
   const lacksRtcForRoomMode = !window.RTCPeerConnection && !isBluetoothOnlyMode();
   if (lacksRequiredAudio || lacksRtcForRoomMode) {

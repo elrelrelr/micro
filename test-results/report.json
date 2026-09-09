@@ -1,6 +1,6 @@
 {
   "baseUrl": "http://127.0.0.1:3000",
-  "startedAt": "2026-09-09T21:43:49.925Z",
+  "startedAt": "2026-09-09T22:33:06.508Z",
   "checks": [
     {
       "name": "Servidor JS existe",
@@ -25,7 +25,7 @@
     {
       "name": "API health responde",
       "pass": true,
-      "details": "{\"ok\":true,\"rooms\":0,\"time\":\"2026-09-09T21:43:49.940Z\"}"
+      "details": "{\"ok\":true,\"rooms\":0,\"time\":\"2026-09-09T22:33:06.523Z\"}"
     },
     {
       "name": "Manifest PWA responde",
@@ -53,6 +53,11 @@
       "details": ""
     },
     {
+      "name": "Diagnóstico en vivo aparece desde el inicio",
+      "pass": true,
+      "details": "Resumen: el siguiente paso es pulsar hablar para que el navegador pida el micrófono."
+    },
+    {
       "name": "Service worker se registra en entorno simulado",
       "pass": true,
       "details": ""
@@ -76,6 +81,16 @@
       "name": "Micrófono continuo deja el track habilitado",
       "pass": true,
       "details": ""
+    },
+    {
+      "name": "Diagnóstico marca permiso y captura cuando el micrófono arranca",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Diagnóstico resume que el emisor debería oírse al hablar",
+      "pass": true,
+      "details": "Resumen: el emisor está hablando y debería oírse por Parlante Bluetooth del teléfono."
     },
     {
       "name": "Micrófono Bluetooth continuo se detiene",
@@ -126,6 +141,11 @@
       "name": "El Bluetooth local también se detiene correctamente en navegadores limitados",
       "pass": true,
       "details": ""
+    },
+    {
+      "name": "Diagnóstico identifica permiso denegado del micrófono",
+      "pass": true,
+      "details": ""
     }
   ],
   "warnings": [
@@ -133,9 +153,9 @@
     "La salida Bluetooth final en el teléfono depende del navegador móvil y del sistema operativo reales; aquí validé la lógica, la UI y el fallback de salida por sistema."
   ],
   "errors": [],
-  "finishedAt": "2026-09-09T21:43:50.497Z",
+  "finishedAt": "2026-09-09T22:33:07.203Z",
   "summary": {
-    "passed": 25,
+    "passed": 29,
     "failed": 0,
     "warnings": 2,
     "errors": 0
