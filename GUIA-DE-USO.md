@@ -40,9 +40,12 @@
 2. Elige **Parlante / audífonos Bluetooth de este mismo dispositivo**.
 3. Empareja el Bluetooth en el sistema.
 4. Elige la salida de audio.
-5. Pulsa **Hablar por Bluetooth**.
+5. Usa **Micrófono Bluetooth continuo** si quieres dejar el micrófono abierto.
+6. O mantén pulsado **Pulsa para hablar por Bluetooth** para hablar solo mientras tengas el dedo encima.
 
 > Aquí no se usa clave ni sala.
+>
+> El parlante Bluetooth no aparecerá en **Dispositivos conectados** porque esa lista solo muestra otros clientes web.
 
 ---
 

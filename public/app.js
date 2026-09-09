@@ -32,6 +32,8 @@ const els = {
   unlockAudioBtn: document.getElementById('unlockAudioBtn'),
   localStartBtn: document.getElementById('localStartBtn'),
   localStopBtn: document.getElementById('localStopBtn'),
+  localPttBtn: document.getElementById('localPttBtn'),
+  localPttHint: document.getElementById('localPttHint'),
   selectBtOutputBtn: document.getElementById('selectBtOutputBtn'),
   localModeStatus: document.getElementById('localModeStatus'),
   localOutputStatus: document.getElementById('localOutputStatus'),
@@ -100,6 +102,7 @@ const state = {
   eventSource: null,
   peers: new Map(),
   localPlaybackActive: false,
+  localPttActive: false,
   roomSendActive: false,
   talkMode: 'always-on',
   pttPressed: false,
@@ -499,7 +502,9 @@ function updatePeerSummary() {
     return;
   }
   if (isSenderMode() && isBluetoothTarget()) {
-    els.peerSummaryText.textContent = 'Bluetooth local: este modo no necesita que otro dispositivo abra la web.';
+    els.peerSummaryText.textContent = state.localPttActive
+      ? 'Hablando por Bluetooth local.'
+      : 'Bluetooth local: este modo no necesita que otro dispositivo abra la web.';
     updatePeersEmptyState();
     return;
   }
@@ -539,10 +544,12 @@ function refreshPrimaryStatus() {
   }
 
   if (isSenderMode() && isBluetoothTarget()) {
-    status = state.localPlaybackActive ? 'bluetooth activo' : 'listo para bluetooth';
+    status = state.localPlaybackActive ? (state.localPttActive ? 'hablando por bluetooth' : 'bluetooth activo') : 'listo para bluetooth';
     progress = state.localPlaybackActive
-      ? 'Bluetooth local activo. Tu voz ya sale por la salida elegida.'
-      : 'Empareja Bluetooth, elige la salida y pulsa “Hablar por Bluetooth”.';
+      ? state.localPttActive
+        ? 'Pulsa para hablar activo. Tu voz debería salir por el parlante Bluetooth mientras mantienes el botón pulsado.'
+        : 'Bluetooth local activo. Tu voz ya sale por la salida elegida.'
+      : 'Empareja Bluetooth, elige la salida y usa el modo continuo o el botón “Pulsa para hablar por Bluetooth”.';
   } else if (!state.joined) {
     status = isReceiverMode() ? 'receptor pendiente' : 'sala pendiente';
     progress = isReceiverMode()
@@ -634,7 +641,7 @@ function renderWorkflowMode() {
   } else if (bluetoothTarget) {
     els.outputCardTitle.textContent = 'Salida Bluetooth local';
     els.outputCardHint.textContent = 'Aquí eliges por dónde se va a escuchar este mismo dispositivo.';
-    els.roomModeHint.innerHTML = 'Bluetooth local: no hay sala. Solo ajusta tu audio y pulsa <strong>Hablar por Bluetooth</strong>.';
+    els.roomModeHint.innerHTML = 'Bluetooth local: no hay sala. Usa <strong>Micrófono Bluetooth continuo</strong> o <strong>Pulsa para hablar por Bluetooth</strong>. El parlante no aparecerá en la lista de dispositivos conectados.';
   } else {
     els.roomModeHint.innerHTML = !state.joined
       ? `Escribe una clave, compártela con el receptor y pulsa <strong>${els.connectBtn.textContent}</strong>.`
@@ -747,6 +754,7 @@ async function copyRoomLink() {
   try {
     await navigator.clipboard.writeText(link);
     els.qrLinkPreview.textContent = link;
+    showToast('Enlace copiado');
     log(`Enlace copiado: ${link}`, 'success');
   } catch (error) {
     log(`No pude copiar el enlace: ${error.message}`, 'warn');
@@ -1138,42 +1146,70 @@ async function restartAudioPipeline(reason = 'Se reinició el audio para aplicar
   log(reason, 'success');
 }
 
-async function startLocalMode() {
+async function startLocalMode({ pushToTalk = false, silentToast = false } = {}) {
   if (!state.modeChosen || !isSenderMode() || !isBluetoothTarget()) {
     alert('Primero selecciona Emisor y luego Bluetooth local.');
-    return;
+    return false;
   }
 
   try {
     await unlockAudio();
     state.localPlaybackActive = true;
+    state.localPttActive = Boolean(pushToTalk);
     await ensureAudioPipeline();
     await syncLocalPlayback();
     updateButtons();
     renderWorkflowMode();
-    setLocalStatus(`Bluetooth local activo. Audio saliendo por ${state.selectedOutputLabel || 'la salida elegida'}.`, 'success');
-    showToast('Bluetooth local iniciado con éxito');
-    log('Bluetooth local activo.', 'success');
+    setLocalStatus(
+      pushToTalk
+        ? `Pulsa para hablar activo. Tu voz debería salir por ${state.selectedOutputLabel || 'la salida elegida'} mientras mantienes el botón presionado.`
+        : `Bluetooth local activo. Audio saliendo por ${state.selectedOutputLabel || 'la salida elegida'}.`,
+      'success',
+    );
+    if (!silentToast) {
+      showToast(pushToTalk ? 'Pulsa para hablar Bluetooth activo' : 'Bluetooth local iniciado con éxito');
+    }
+    log(pushToTalk ? 'Pulsa para hablar Bluetooth activo.' : 'Bluetooth local activo.', 'success');
+    return true;
   } catch (error) {
     state.localPlaybackActive = false;
+    state.localPttActive = false;
     renderWorkflowMode();
     setLocalStatus('No pude iniciar el Bluetooth local.', 'danger');
     log(`No pude iniciar el modo local: ${error.message}`, 'error');
     alert(`No pude iniciar el Bluetooth local. ${error.message}`);
+    return false;
   }
 }
 
-async function stopLocalMode() {
+async function stopLocalMode({ silentToast = false } = {}) {
   state.localPlaybackActive = false;
+  state.localPttActive = false;
   await cleanupAudioIfIdle();
   updateButtons();
   renderWorkflowMode();
-  setLocalStatus('Bluetooth local detenido. Este modo no necesita sala ni clave.', 'secondary');
+  setLocalStatus('Bluetooth local detenido. Este modo no necesita sala ni clave. El parlante Bluetooth no aparecerá en “Dispositivos conectados”.', 'secondary');
+  if (!silentToast) showToast('Bluetooth local detenido', 'info');
   log('Bluetooth local detenido.');
+}
+
+async function handleLocalPttStart(event) {
+  if (event) event.preventDefault();
+  if (!state.modeChosen || !isSenderMode() || !isBluetoothTarget()) return;
+  if (state.localPlaybackActive && !state.localPttActive) return;
+  if (state.localPttActive && state.localPlaybackActive) return;
+  await startLocalMode({ pushToTalk: true, silentToast: true });
+}
+
+async function handleLocalPttEnd(event) {
+  if (event) event.preventDefault();
+  if (!state.localPttActive) return;
+  await stopLocalMode({ silentToast: true });
 }
 
 function getSendEnabled() {
   if (!state.localTrack) return false;
+  if (state.localPlaybackActive) return true;
   if (state.roomRole === 'receiver') return false;
   if (!state.roomSendActive) return false;
   if (state.talkMode === 'push-to-talk') return state.pttPressed;
@@ -1206,14 +1242,16 @@ function updateButtons() {
   els.unlockAudioBtn.disabled = !state.joined && !hasRemoteAudioActive();
   els.localStartBtn.disabled = !state.modeChosen || state.localPlaybackActive || !(isSenderMode() && isBluetoothTarget());
   els.localStopBtn.disabled = !state.localPlaybackActive;
+  els.localPttBtn.disabled = !state.modeChosen || !(isSenderMode() && isBluetoothTarget()) || (state.localPlaybackActive && !state.localPttActive);
   els.pttButton.disabled = !canSendMic || state.talkMode !== 'push-to-talk';
 
   els.connectBtn.textContent = isReceiverMode() ? 'Conectar como receptor' : 'Crear / conectar sala';
   els.disconnectBtn.textContent = 'Salir de la sala';
   els.startMicBtn.textContent = state.roomSendActive ? 'Micrófono encendido' : 'Mantener micrófono encendido';
   els.stopMicBtn.textContent = 'Apagar micrófono';
-  els.localStartBtn.textContent = state.localPlaybackActive ? 'Bluetooth activo' : 'Hablar por Bluetooth';
+  els.localStartBtn.textContent = state.localPlaybackActive && !state.localPttActive ? 'Bluetooth activo' : 'Micrófono Bluetooth continuo';
   els.localStopBtn.textContent = 'Detener Bluetooth local';
+  els.localPttBtn.textContent = state.localPttActive ? 'Hablando… suelta para detener' : 'Pulsa para hablar por Bluetooth';
 }
 
 function updateRoomHint() {
@@ -1245,9 +1283,9 @@ function updatePttUi() {
   }
 
   if (isBluetoothTarget()) {
-    els.pttState.textContent = 'Bluetooth local';
-    els.pttState.className = 'badge rounded-pill text-bg-secondary';
-    els.pttHint.textContent = 'Para Bluetooth local usa el botón “Hablar por Bluetooth”.';
+    els.pttState.textContent = state.localPttActive ? 'Hablando' : 'Bluetooth local';
+    els.pttState.className = `badge rounded-pill ${state.localPttActive ? 'text-bg-success' : 'text-bg-secondary'}`;
+    els.pttHint.textContent = 'Para Bluetooth local usa “Micrófono Bluetooth continuo” o “Pulsa para hablar por Bluetooth”.';
     els.pttButton.textContent = 'Solo para envío por sala';
     return;
   }
@@ -1603,7 +1641,7 @@ async function startRoomMic() {
     return;
   }
   if (isBluetoothTarget()) {
-    alert('Para Bluetooth local usa el botón “Hablar por Bluetooth”.');
+    alert('Para Bluetooth local usa “Micrófono Bluetooth continuo” o “Pulsa para hablar por Bluetooth”.');
     return;
   }
   if (state.peers.size === 0) {
@@ -1624,6 +1662,7 @@ async function startRoomMic() {
     updateButtons();
     updatePttUi();
     renderWorkflowMode();
+    showToast('Micrófono activado con éxito');
     log(`Micrófono de sala activo a ${getBitrateKbps()} kbps.`, 'success');
   } catch (error) {
     state.roomSendActive = false;
@@ -1657,7 +1696,7 @@ async function joinRoom() {
     return;
   }
   if (isSenderMode() && isBluetoothTarget()) {
-    alert('Para Bluetooth local no uses sala. Usa el botón “Hablar por Bluetooth”.');
+    alert('Para Bluetooth local no uses sala. Usa “Micrófono Bluetooth continuo” o “Pulsa para hablar por Bluetooth”.');
     return;
   }
 
@@ -1694,6 +1733,7 @@ async function joinRoom() {
     updateButtons();
     updatePttUi();
     renderWorkflowMode();
+    showToast(isReceiverMode() ? 'Receptor conectado con éxito' : 'Sala creada con éxito');
     log(`${isReceiverMode() ? 'Receptor' : 'Emisor'} conectado como ${state.displayName}.`, 'success');
 
     const eventsUrl = `${state.serverOrigin}/api/events?roomId=${encodeURIComponent(state.roomId)}&peerId=${encodeURIComponent(state.peerId)}`;
@@ -1902,6 +1942,7 @@ function getDebugSnapshot() {
     shareBlockVisible: !els.shareBlock.classList.contains('d-none'),
     lastToastMessage: state.lastToastMessage,
     localPlaybackActive: state.localPlaybackActive,
+    localPttActive: state.localPttActive,
     roomSendActive: state.roomSendActive,
     pttPressed: state.pttPressed,
     localTrack: state.localTrack ? {
@@ -1966,7 +2007,10 @@ function wirePttEvents() {
   });
 
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) handlePttEnd();
+    if (document.hidden) {
+      handlePttEnd();
+      handleLocalPttEnd();
+    }
   });
 }
 
@@ -2002,8 +2046,13 @@ function wireUi() {
   els.startMicBtn.addEventListener('click', startRoomMic);
   els.stopMicBtn.addEventListener('click', stopRoomMic);
   els.unlockAudioBtn.addEventListener('click', unlockAudio);
-  els.localStartBtn.addEventListener('click', startLocalMode);
-  els.localStopBtn.addEventListener('click', stopLocalMode);
+  els.localStartBtn.addEventListener('click', () => startLocalMode());
+  els.localStopBtn.addEventListener('click', () => stopLocalMode());
+  els.localPttBtn.addEventListener('pointerdown', handleLocalPttStart);
+  els.localPttBtn.addEventListener('pointerup', handleLocalPttEnd);
+  els.localPttBtn.addEventListener('pointercancel', handleLocalPttEnd);
+  window.addEventListener('pointerup', handleLocalPttEnd);
+  window.addEventListener('pointercancel', handleLocalPttEnd);
   els.selectBtOutputBtn.addEventListener('click', selectBluetoothOutput);
   els.randomKeyBtn.addEventListener('click', async () => {
     els.roomKey.value = generateRandomKey();

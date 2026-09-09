@@ -1,9 +1,9 @@
 # Reporte de pruebas de Mic Room
 
 - URL base: http://127.0.0.1:3000
-- Inicio: 2026-09-09T17:48:56.283Z
-- Fin: 2026-09-09T17:48:57.066Z
-- Checks OK: 33
+- Inicio: 2026-09-09T21:21:47.718Z
+- Fin: 2026-09-09T21:21:48.564Z
+- Checks OK: 36
 - Checks fallidos: 0
 - Advertencias: 3
 
@@ -12,7 +12,7 @@
 - ✅ **HTML carga Bootstrap local**
 - ✅ **HTML incluye manifest PWA**
 - ✅ **HTML incluye layout responsive Bootstrap**
-- ✅ **API health responde** — {"ok":true,"rooms":0,"time":"2026-09-09T17:48:56.297Z"}
+- ✅ **API health responde** — {"ok":true,"rooms":0,"time":"2026-09-09T21:21:47.733Z"}
 - ✅ **Manifest PWA responde**
 - ✅ **Service worker responde**
 - ✅ **App inicializa en ambos entornos**
@@ -24,7 +24,10 @@
 - ✅ **Copiar enlace funciona** — http://169.254.0.21:3000/#k=arena-demo-2026&mode=receiver&rx=pc
 - ✅ **Selector de salida Bluetooth actualiza la salida**
 - ✅ **Modo local simple inicia sin sala**
+- ✅ **Modo local continuo deja el track habilitado**
 - ✅ **Modo local simple se detiene**
+- ✅ **Pulsa para hablar Bluetooth activa el micrófono mientras se mantiene pulsado**
+- ✅ **Pulsa para hablar Bluetooth se detiene al soltar**
 - ✅ **El receptor se puede seleccionar**
 - ✅ **El emisor queda esperando al receptor** — esperando receptor
 - ✅ **Ambos dispositivos entran a la sala**
@@ -32,7 +35,7 @@
 - ✅ **El emisor ve al receptor conectado**
 - ✅ **Micrófono local arranca**
 - ✅ **WebRTC conecta ambos peers**
-- ✅ **El receptor recibe stream remoto** — [{"peerId":"0340b4e0-06e0-49f7-a218-3f530d1925a9","name":"PC emisor","polite":true,"connectionState":"connected","iceConnectionState":"connected","signalingState":"stable","remoteAudioPaused":false,"remoteAudioHasStream":true,"remoteAudioTrackCount":1,"senderTrackEnabled":null,"senderTrackReadyState":null,"senderMaxBitrate":null}]
+- ✅ **El receptor recibe stream remoto** — [{"peerId":"e8fbd417-9236-4e96-974b-034a22e2e952","name":"PC emisor","polite":false,"connectionState":"connected","iceConnectionState":"connected","signalingState":"stable","remoteAudioPaused":false,"remoteAudioHasStream":true,"remoteAudioTrackCount":1,"senderTrackEnabled":null,"senderTrackReadyState":null,"senderMaxBitrate":null}]
 - ✅ **Calidad alta aplica bitrate 72 kbps**
 - ✅ **Calidad personalizada aplica bitrate 80 kbps**
 - ✅ **Push-to-talk silencia al soltar**

@@ -1,6 +1,6 @@
 {
   "baseUrl": "http://127.0.0.1:3000",
-  "startedAt": "2026-09-09T17:48:56.283Z",
+  "startedAt": "2026-09-09T21:21:47.718Z",
   "checks": [
     {
       "name": "Servidor JS existe",
@@ -25,7 +25,7 @@
     {
       "name": "API health responde",
       "pass": true,
-      "details": "{\"ok\":true,\"rooms\":0,\"time\":\"2026-09-09T17:48:56.297Z\"}"
+      "details": "{\"ok\":true,\"rooms\":0,\"time\":\"2026-09-09T21:21:47.733Z\"}"
     },
     {
       "name": "Manifest PWA responde",
@@ -83,7 +83,22 @@
       "details": ""
     },
     {
+      "name": "Modo local continuo deja el track habilitado",
+      "pass": true,
+      "details": ""
+    },
+    {
       "name": "Modo local simple se detiene",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Pulsa para hablar Bluetooth activa el micrófono mientras se mantiene pulsado",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Pulsa para hablar Bluetooth se detiene al soltar",
       "pass": true,
       "details": ""
     },
@@ -125,7 +140,7 @@
     {
       "name": "El receptor recibe stream remoto",
       "pass": true,
-      "details": "[{\"peerId\":\"0340b4e0-06e0-49f7-a218-3f530d1925a9\",\"name\":\"PC emisor\",\"polite\":true,\"connectionState\":\"connected\",\"iceConnectionState\":\"connected\",\"signalingState\":\"stable\",\"remoteAudioPaused\":false,\"remoteAudioHasStream\":true,\"remoteAudioTrackCount\":1,\"senderTrackEnabled\":null,\"senderTrackReadyState\":null,\"senderMaxBitrate\":null}]"
+      "details": "[{\"peerId\":\"e8fbd417-9236-4e96-974b-034a22e2e952\",\"name\":\"PC emisor\",\"polite\":false,\"connectionState\":\"connected\",\"iceConnectionState\":\"connected\",\"signalingState\":\"stable\",\"remoteAudioPaused\":false,\"remoteAudioHasStream\":true,\"remoteAudioTrackCount\":1,\"senderTrackEnabled\":null,\"senderTrackReadyState\":null,\"senderMaxBitrate\":null}]"
     },
     {
       "name": "Calidad alta aplica bitrate 72 kbps",
@@ -174,9 +189,9 @@
     "La instalación completa en Android/iPhone depende del navegador y del sistema operativo reales; aquí validé manifest, service worker, assets PWA y lógica de UI."
   ],
   "errors": [],
-  "finishedAt": "2026-09-09T17:48:57.066Z",
+  "finishedAt": "2026-09-09T21:21:48.564Z",
   "summary": {
-    "passed": 33,
+    "passed": 36,
     "failed": 0,
     "warnings": 3,
     "errors": 0

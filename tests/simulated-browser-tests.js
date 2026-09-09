@@ -569,9 +569,25 @@ async function main() {
     await click(pc.window, '#localStartBtn');
     await waitFor(() => pc.window.__micRoomDebug.snapshot().localPlaybackActive === true, { label: 'modo local activo' });
     addCheck('Modo local simple inicia sin sala', pc.window.__micRoomDebug.snapshot().localPlaybackActive === true);
+    addCheck('Modo local continuo deja el track habilitado', pc.window.__micRoomDebug.snapshot().localTrack?.enabled === true);
     await click(pc.window, '#localStopBtn');
     await waitFor(() => pc.window.__micRoomDebug.snapshot().localPlaybackActive === false, { label: 'modo local detenido' });
     addCheck('Modo local simple se detiene', pc.window.__micRoomDebug.snapshot().localPlaybackActive === false);
+
+    const localPttButton = pc.window.document.querySelector('#localPttBtn');
+    localPttButton.dispatchEvent(new pc.window.PointerEvent('pointerdown', { bubbles: true }));
+    await waitFor(() => {
+      const s = pc.window.__micRoomDebug.snapshot();
+      return s.localPlaybackActive === true && s.localPttActive === true && s.localTrack?.enabled === true;
+    }, { timeout: 10000, label: 'local ptt activo' });
+    addCheck('Pulsa para hablar Bluetooth activa el micrófono mientras se mantiene pulsado', pc.window.__micRoomDebug.snapshot().localPttActive === true);
+
+    localPttButton.dispatchEvent(new pc.window.PointerEvent('pointerup', { bubbles: true }));
+    await waitFor(() => {
+      const s = pc.window.__micRoomDebug.snapshot();
+      return s.localPlaybackActive === false && s.localPttActive === false;
+    }, { timeout: 10000, label: 'local ptt detenido' });
+    addCheck('Pulsa para hablar Bluetooth se detiene al soltar', pc.window.__micRoomDebug.snapshot().localPlaybackActive === false && pc.window.__micRoomDebug.snapshot().localPttActive === false);
 
     await select(pc.window, '#senderTarget', 'pc-wifi');
     await waitFor(() => pc.window.__micRoomDebug.snapshot().senderTarget === 'pc-wifi', { label: 'selector PC wifi' });

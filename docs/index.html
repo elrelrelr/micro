@@ -126,11 +126,15 @@
           </div>
 
           <div id="localModeControls" class="d-none mt-3">
-            <div class="d-grid d-sm-flex gap-2 mb-3">
-              <button id="localStartBtn" class="btn btn-success btn-lg flex-fill">Hablar por Bluetooth</button>
+            <div class="d-grid d-sm-flex gap-2 mb-2">
+              <button id="localStartBtn" class="btn btn-success btn-lg flex-fill">Micrófono Bluetooth continuo</button>
               <button id="localStopBtn" class="btn btn-outline-secondary btn-lg flex-fill" disabled>Detener Bluetooth local</button>
             </div>
-            <div id="localModeStatus" class="alert alert-secondary border-0 mb-0 status-panel">Detenido. Este modo no necesita sala ni clave.</div>
+            <div class="d-grid gap-2 mb-3">
+              <button id="localPttBtn" class="btn btn-outline-info btn-lg ptt-button">Pulsa para hablar por Bluetooth</button>
+              <div id="localPttHint" class="small text-body-secondary">Mantén pulsado este botón. Al pulsarlo, la app pedirá permiso del micrófono si todavía no lo tiene y tu voz debe salir por el parlante Bluetooth ya emparejado en este teléfono.</div>
+            </div>
+            <div id="localModeStatus" class="alert alert-secondary border-0 mb-0 status-panel">Detenido. Este modo no necesita sala ni clave. El parlante Bluetooth no aparecerá en “Dispositivos conectados”.</div>
           </div>
 
           <div class="d-grid d-sm-flex gap-2 mt-3">

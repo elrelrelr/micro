@@ -124,7 +124,7 @@ NODE_PATH=/tmp/microom-test-tools/node_modules node /home/user/mic-room/tests/si
 
 Resultado:
 
-- **33 checks OK**
+- **36 checks OK**
 - **0 fallos**
 - **3 advertencias esperadas**
 
