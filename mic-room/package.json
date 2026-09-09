@@ -1,0 +1,12 @@
+{
+  "name": "mic-room",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web app autoalojada para usar el teléfono como micrófono y enviar audio P2P al PC u otros teléfonos",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "puppeteer": "^24.43.1"
+  }
+}

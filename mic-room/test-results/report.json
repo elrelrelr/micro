@@ -1,0 +1,184 @@
+{
+  "baseUrl": "http://127.0.0.1:3000",
+  "startedAt": "2026-09-09T17:48:56.283Z",
+  "checks": [
+    {
+      "name": "Servidor JS existe",
+      "pass": true,
+      "details": "server.js cargado"
+    },
+    {
+      "name": "HTML carga Bootstrap local",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "HTML incluye manifest PWA",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "HTML incluye layout responsive Bootstrap",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "API health responde",
+      "pass": true,
+      "details": "{\"ok\":true,\"rooms\":0,\"time\":\"2026-09-09T17:48:56.297Z\"}"
+    },
+    {
+      "name": "Manifest PWA responde",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Service worker responde",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "App inicializa en ambos entornos",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "El emisor se puede seleccionar",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Service worker se registra en entorno simulado",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "QR se genera al escribir clave",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Huella de sala se calcula",
+      "pass": true,
+      "details": "83bf59…d0ab"
+    },
+    {
+      "name": "El enlace compartido deja listo al receptor",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Copiar enlace funciona",
+      "pass": true,
+      "details": "http://169.254.0.21:3000/#k=arena-demo-2026&mode=receiver&rx=pc"
+    },
+    {
+      "name": "Selector de salida Bluetooth actualiza la salida",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Modo local simple inicia sin sala",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Modo local simple se detiene",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "El receptor se puede seleccionar",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "El emisor queda esperando al receptor",
+      "pass": true,
+      "details": "esperando receptor"
+    },
+    {
+      "name": "Ambos dispositivos entran a la sala",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "El receptor usa flujo separado",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "El emisor ve al receptor conectado",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Micrófono local arranca",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "WebRTC conecta ambos peers",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "El receptor recibe stream remoto",
+      "pass": true,
+      "details": "[{\"peerId\":\"0340b4e0-06e0-49f7-a218-3f530d1925a9\",\"name\":\"PC emisor\",\"polite\":true,\"connectionState\":\"connected\",\"iceConnectionState\":\"connected\",\"signalingState\":\"stable\",\"remoteAudioPaused\":false,\"remoteAudioHasStream\":true,\"remoteAudioTrackCount\":1,\"senderTrackEnabled\":null,\"senderTrackReadyState\":null,\"senderMaxBitrate\":null}]"
+    },
+    {
+      "name": "Calidad alta aplica bitrate 72 kbps",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Calidad personalizada aplica bitrate 80 kbps",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Push-to-talk silencia al soltar",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Push-to-talk activa el track al pulsar",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Push-to-talk vuelve a silenciar al soltar",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Push-to-talk funciona con barra espaciadora",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Monitoreo local se activa",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "Salida limpia de la sala",
+      "pass": true,
+      "details": ""
+    }
+  ],
+  "warnings": [
+    "No había IP local detectable para validar el reemplazo automático de localhost por IP.",
+    "Bluetooth real no se puede probar dentro de este sandbox porque no hay acceso a hardware Bluetooth.",
+    "La instalación completa en Android/iPhone depende del navegador y del sistema operativo reales; aquí validé manifest, service worker, assets PWA y lógica de UI."
+  ],
+  "errors": [],
+  "finishedAt": "2026-09-09T17:48:57.066Z",
+  "summary": {
+    "passed": 33,
+    "failed": 0,
+    "warnings": 3,
+    "errors": 0
+  }
+}
