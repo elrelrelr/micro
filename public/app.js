@@ -1,4 +1,6 @@
 const els = {
+  roleSection: document.getElementById('roleSection'),
+  connectionSection: document.getElementById('connectionSection'),
   deviceModeSenderBtn: document.getElementById('deviceModeSenderBtn'),
   deviceModeReceiverBtn: document.getElementById('deviceModeReceiverBtn'),
   senderModePanel: document.getElementById('senderModePanel'),
@@ -19,14 +21,17 @@ const els = {
   roomModeHint: document.getElementById('roomModeHint'),
   connectBtn: document.getElementById('connectBtn'),
   disconnectBtn: document.getElementById('disconnectBtn'),
+  networkButtonsRow: document.getElementById('networkButtonsRow'),
   shareBlock: document.getElementById('shareBlock'),
   senderSettingsCard: document.getElementById('senderSettingsCard'),
   outputCard: document.getElementById('outputCard'),
   outputCardTitle: document.getElementById('outputCardTitle'),
   outputCardHint: document.getElementById('outputCardHint'),
   receiverOutputActions: document.getElementById('receiverOutputActions'),
+  outputActionsRow: document.getElementById('outputActionsRow'),
   localModeControls: document.getElementById('localModeControls'),
   roomSendControlsCard: document.getElementById('roomSendControlsCard'),
+  roomMicControls: document.getElementById('roomMicControls'),
   startMicBtn: document.getElementById('startMicBtn'),
   stopMicBtn: document.getElementById('stopMicBtn'),
   unlockAudioBtn: document.getElementById('unlockAudioBtn'),
@@ -72,9 +77,13 @@ const els = {
   meterText: document.getElementById('meterText'),
   meterBar: document.getElementById('meterBar'),
   peerSummaryText: document.getElementById('peerSummaryText'),
+  peersSection: document.getElementById('peersSection'),
   peersList: document.getElementById('peersList'),
+  logSection: document.getElementById('logSection'),
   logBox: document.getElementById('logBox'),
 };
+
+const BLUETOOTH_ONLY_MODE = true;
 
 const QUALITY_PRESETS = {
   low: { bitrateKbps: 24, description: 'Prioriza ahorro de red y voz clara para redes flojas.' },
@@ -108,6 +117,8 @@ const state = {
   pttPressed: false,
   preferredSinkId: 'default',
   selectedOutputLabel: 'Salida del sistema',
+  canChangeSink: false,
+  canUseDirectOutputPicker: false,
   deferredInstallPrompt: null,
   qrDataUrl: '',
   previewToken: 0,
@@ -235,6 +246,21 @@ function isBluetoothTarget(target = state.senderTarget) {
 function setVisible(el, visible) {
   if (!el) return;
   el.classList.toggle('d-none', !visible);
+}
+
+function isBluetoothOnlyMode() {
+  return BLUETOOTH_ONLY_MODE;
+}
+
+function applyBluetoothOnlyDefaults() {
+  if (!isBluetoothOnlyMode()) return;
+  setSenderTarget('bluetooth-local', { persist: false, refreshArtifacts: false, announce: false });
+  setDeviceMode('sender', { persist: false, announce: false, togglePanel: false });
+  state.modeChosen = true;
+  state.deviceMode = 'sender';
+  state.roomRole = 'sender';
+  state.rolePanelOpen = 'sender';
+  els.roomRole.value = 'sender';
 }
 
 function getInitialServerOrigin() {
@@ -587,6 +613,44 @@ function renderWorkflowMode() {
   const targetMeta = getSenderTargetMeta();
 
   updateModeButtonsVisual();
+
+  if (isBluetoothOnlyMode()) {
+    setVisible(els.roleSection, true);
+    setVisible(els.connectionSection, true);
+    setVisible(els.senderTargetBlock, false);
+    setVisible(els.senderSettingsCard, true);
+    setVisible(els.roomMicControls, false);
+    setVisible(els.roomSendControlsCard, false);
+    setVisible(els.outputCard, true);
+    setVisible(els.outputActionsRow, true);
+    setVisible(els.receiverOutputActions, false);
+    setVisible(els.unlockAudioBtn, false);
+    setVisible(els.localModeControls, true);
+    setVisible(els.roomJoinBlock, false);
+    setVisible(els.networkButtonsRow, false);
+    setVisible(els.shareBlock, false);
+    setVisible(els.bluetoothOnlyNote, false);
+    setVisible(els.peersSection, false);
+    setVisible(els.logSection, false);
+
+    els.connectionCardTitle.textContent = 'Habla por tu parlante Bluetooth';
+    els.connectionCardHint.textContent = 'Aquí solo usamos este teléfono como micrófono local. No hay salas, claves ni receptor web.';
+    els.deviceModeHint.innerHTML = 'Modo fijo: <strong>Emisor</strong> con <strong>Bluetooth local</strong>.';
+    els.outputCardTitle.textContent = 'Salida del teléfono';
+    els.outputCardHint.textContent = 'Si el navegador no deja cambiar la salida desde aquí, usa el parlante Bluetooth como salida multimedia del sistema del teléfono.';
+    els.roomModeHint.innerHTML = 'Conecta el parlante Bluetooth en el sistema del teléfono y usa <strong>Micrófono Bluetooth continuo</strong> o <strong>Pulsa para hablar por Bluetooth</strong>.';
+    els.peerSummaryText.textContent = state.localPttActive
+      ? 'Hablando por Bluetooth local.'
+      : state.localPlaybackActive
+        ? 'Micrófono Bluetooth activo.'
+        : 'Listo para usar Bluetooth local.';
+
+    refreshPrimaryStatus();
+    updateButtons();
+    updatePttUi();
+    return;
+  }
+
   setVisible(els.senderTargetBlock, sender);
   setVisible(els.senderSettingsCard, sender);
   setVisible(els.roomSendControlsCard, state.modeChosen);
@@ -895,12 +959,23 @@ async function populateDevices() {
 
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     const canChooseSink = typeof HTMLMediaElement.prototype.setSinkId === 'function' || typeof AudioContextClass?.prototype?.setSinkId === 'function';
+    const canUseDirectOutputPicker = canChooseSink && typeof navigator.mediaDevices?.selectAudioOutput === 'function';
+    const detectedBtOutput = outputs.find((output) => /bluetooth|bt|buds|aud[ií]fono|parlante|speaker|head/i.test(output.label || ''));
+    state.canChangeSink = canChooseSink;
+    state.canUseDirectOutputPicker = canUseDirectOutputPicker;
     if (!canChooseSink) {
       els.outputSelect.disabled = true;
-      els.localOutputStatus.textContent = 'Tu navegador no permite elegir la salida desde la web. Usa la salida predeterminada del sistema o empareja Bluetooth antes.';
+      els.localOutputStatus.textContent = detectedBtOutput
+        ? `Se detectó “${detectedBtOutput.label}”, pero este navegador no puede cambiar la salida desde la web. Déjalo como salida multimedia del sistema del teléfono.`
+        : 'Este navegador no puede cambiar la salida desde la web. Conecta el parlante Bluetooth desde el sistema del teléfono y déjalo como salida multimedia.';
+    } else if (!canUseDirectOutputPicker) {
+      els.outputSelect.disabled = false;
+      els.localOutputStatus.textContent = detectedBtOutput
+        ? `Tu navegador no abre el selector directo, pero puedes intentar escoger “${detectedBtOutput.label}” en la lista de arriba.`
+        : 'Tu navegador no abre el selector directo, pero puedes elegir la salida desde la lista de arriba.';
     } else {
       els.outputSelect.disabled = false;
-      els.localOutputStatus.textContent = 'Puedes elegir manualmente la salida o usar el botón “Elegir salida Bluetooth”.';
+      els.localOutputStatus.textContent = 'Puedes elegir la salida desde la lista de arriba o usar el botón “Elegir salida Bluetooth”.';
     }
 
     for (const output of outputs) {
@@ -917,6 +992,8 @@ async function populateDevices() {
       els.outputSelect.value = state.preferredSinkId;
     }
     state.preferredSinkId = els.outputSelect.value || 'default';
+    updateButtons();
+    renderWorkflowMode();
   } catch (error) {
     log(`No pude enumerar dispositivos: ${error.message}`, 'warn');
   }
@@ -948,8 +1025,11 @@ async function applyOutputSelection() {
 }
 
 async function selectBluetoothOutput() {
-  if (!navigator.mediaDevices?.selectAudioOutput) {
-    alert('Tu navegador no soporta la selección directa de salida. Empareja el dispositivo Bluetooth desde el sistema y usa la salida predeterminada.');
+  if (!state.canUseDirectOutputPicker) {
+    els.localOutputStatus.textContent = state.canChangeSink
+      ? 'Este navegador no abre el selector directo. Usa la lista de salida de arriba y luego prueba hablar.'
+      : 'Este navegador no permite cambiar la salida desde la web. Usa el parlante Bluetooth como salida multimedia del sistema del teléfono.';
+    showToast('Usa el Bluetooth del sistema', 'info');
     return;
   }
 
@@ -1244,6 +1324,19 @@ function updateButtons() {
   els.localStopBtn.disabled = !state.localPlaybackActive;
   els.localPttBtn.disabled = !state.modeChosen || !(isSenderMode() && isBluetoothTarget()) || (state.localPlaybackActive && !state.localPttActive);
   els.pttButton.disabled = !canSendMic || state.talkMode !== 'push-to-talk';
+  els.selectBtOutputBtn.disabled = !state.canUseDirectOutputPicker;
+
+  if (isBluetoothOnlyMode()) {
+    els.deviceModeSenderBtn.disabled = true;
+    els.deviceModeReceiverBtn.disabled = true;
+    els.senderTarget.disabled = true;
+    els.connectBtn.disabled = true;
+    els.disconnectBtn.disabled = true;
+    els.roomRole.disabled = true;
+    els.startMicBtn.disabled = true;
+    els.stopMicBtn.disabled = true;
+    els.unlockAudioBtn.disabled = true;
+  }
 
   els.connectBtn.textContent = isReceiverMode() ? 'Conectar como receptor' : 'Crear / conectar sala';
   els.disconnectBtn.textContent = 'Salir de la sala';
@@ -1252,6 +1345,11 @@ function updateButtons() {
   els.localStartBtn.textContent = state.localPlaybackActive && !state.localPttActive ? 'Bluetooth activo' : 'Micrófono Bluetooth continuo';
   els.localStopBtn.textContent = 'Detener Bluetooth local';
   els.localPttBtn.textContent = state.localPttActive ? 'Hablando… suelta para detener' : 'Pulsa para hablar por Bluetooth';
+  els.selectBtOutputBtn.textContent = state.canUseDirectOutputPicker
+    ? 'Elegir salida Bluetooth'
+    : state.canChangeSink
+      ? 'Elígela en la lista de arriba'
+      : 'Bluetooth desde el teléfono';
 }
 
 function updateRoomHint() {
@@ -1854,6 +1952,9 @@ function restoreSettings() {
     state.rolePanelOpen = state.deviceMode;
     els.roomRole.value = state.roomRole;
   }
+  if (isBluetoothOnlyMode()) {
+    applyBluetoothOnlyDefaults();
+  }
   updateFilterLabels();
   syncBitrateUi();
 }
@@ -1920,6 +2021,7 @@ async function installApp() {
 
 function getDebugSnapshot() {
   return {
+    bluetoothOnlyMode: isBluetoothOnlyMode(),
     joined: state.joined,
     modeChosen: state.modeChosen,
     rolePanelOpen: state.rolePanelOpen,
@@ -1937,9 +2039,15 @@ function getDebugSnapshot() {
     roomModeHint: els.roomModeHint.textContent,
     peerSummaryText: els.peerSummaryText.textContent,
     connectButtonLabel: els.connectBtn.textContent,
-    outputCardVisible: !els.outputCard.classList.contains('d-none'),
-    roomSendControlsVisible: !els.roomSendControlsCard.classList.contains('d-none'),
-    shareBlockVisible: !els.shareBlock.classList.contains('d-none'),
+    outputCardVisible: !els.outputCard?.classList.contains('d-none'),
+    roomSendControlsVisible: !els.roomSendControlsCard?.classList.contains('d-none'),
+    roomMicControlsVisible: !els.roomMicControls?.classList.contains('d-none'),
+    shareBlockVisible: !els.shareBlock?.classList.contains('d-none'),
+    peersSectionVisible: !els.peersSection?.classList.contains('d-none'),
+    logSectionVisible: !els.logSection?.classList.contains('d-none'),
+    directOutputPickerEnabled: state.canUseDirectOutputPicker,
+    sinkChangeSupported: state.canChangeSink,
+    selectBtOutputDisabled: els.selectBtOutputBtn.disabled,
     lastToastMessage: state.lastToastMessage,
     localPlaybackActive: state.localPlaybackActive,
     localPttActive: state.localPttActive,
@@ -1958,6 +2066,7 @@ function getDebugSnapshot() {
     serviceWorkerController: Boolean(navigator.serviceWorker?.controller),
     installButtonVisible: !els.installBtn.classList.contains('d-none'),
     localModeStatus: els.localModeStatus?.textContent || '',
+    localOutputStatus: els.localOutputStatus?.textContent || '',
     localMonitorActive: needsLocalMonitor(),
     filterSettings: getFilterSettings(),
     peers: [...state.peers.values()].map((peer) => {
@@ -1983,7 +2092,7 @@ function getDebugSnapshot() {
 
 window.__micRoomDebug = {
   snapshot: getDebugSnapshot,
-  version: '2.1.0',
+  version: '2.2.0',
 };
 
 function wirePttEvents() {
@@ -2088,6 +2197,7 @@ function wireUi() {
     state.preferredSinkId = els.outputSelect.value || 'default';
     state.selectedOutputLabel = els.outputSelect.selectedOptions[0]?.textContent || 'Salida del sistema';
     await applyOutputSelection();
+    els.localOutputStatus.textContent = `Salida elegida: ${state.selectedOutputLabel}. Si no cambia el sonido, deja el parlante Bluetooth como salida multimedia del sistema.`;
   });
 
   els.qualityPreset.addEventListener('change', async () => {
@@ -2154,8 +2264,10 @@ function wireUi() {
 
 async function init() {
   wireUi();
-  if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
-    log('Este navegador no soporta getUserMedia o WebRTC.', 'error');
+  const lacksRequiredAudio = !navigator.mediaDevices?.getUserMedia;
+  const lacksRtcForRoomMode = !window.RTCPeerConnection && !isBluetoothOnlyMode();
+  if (lacksRequiredAudio || lacksRtcForRoomMode) {
+    log('Este navegador no soporta el audio necesario para esta web.', 'error');
     setRoomStatus('navegador no compatible');
     setLocalStatus('Este navegador no soporta el audio necesario.', 'danger');
     return;
@@ -2165,10 +2277,15 @@ async function init() {
   await populateDevices();
   await refreshRoomArtifacts();
   renderWorkflowMode();
-  if (state.serverOrigin !== window.location.origin) {
+  if (!isBluetoothOnlyMode() && state.serverOrigin !== window.location.origin) {
     log(`Usando señalización remota en ${state.serverOrigin}.`, 'warn');
   }
-  log('Mic Room listo. Elige si este dispositivo será emisor o receptor y sigue solo esos pasos.', 'success');
+  log(
+    isBluetoothOnlyMode()
+      ? 'Mic Room listo en modo Bluetooth local. Usa los botones para hablar por el parlante emparejado.'
+      : 'Mic Room listo. Elige si este dispositivo será emisor o receptor y sigue solo esos pasos.',
+    'success',
+  );
 }
 
 init();

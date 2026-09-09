@@ -141,7 +141,15 @@ function connectRtcPair(offerId) {
   wireAudio(entry.answerer, entry.offerer);
 }
 
-function createWindow(label, userAgent, baseUrl = BASE_URL) {
+function createWindow(label, userAgent, baseUrl = BASE_URL, options = {}) {
+  const {
+    supportDirectOutputPicker = true,
+    supportSinkChange = true,
+    supportRtc = true,
+    outputLabel = `${label} Salida`,
+    selectedOutputLabel = `${label} Bluetooth`,
+  } = options;
+
   const dom = new JSDOM(html, {
     url: baseUrl,
     runScripts: 'outside-only',
@@ -242,9 +250,13 @@ function createWindow(label, userAgent, baseUrl = BASE_URL) {
   window.HTMLMediaElement.prototype.pause = function pause() {
     this._paused = true;
   };
-  window.HTMLMediaElement.prototype.setSinkId = async function setSinkId(value) {
-    this.sinkId = value;
-  };
+  if (supportSinkChange) {
+    window.HTMLMediaElement.prototype.setSinkId = async function setSinkId(value) {
+      this.sinkId = value;
+    };
+  } else {
+    delete window.HTMLMediaElement.prototype.setSinkId;
+  }
 
   class FakeAudioNode {
     connect() { return this; }
@@ -299,9 +311,11 @@ function createWindow(label, userAgent, baseUrl = BASE_URL) {
     createGain() { return new FakeGainNode(); }
     createBiquadFilter() { return new FakeBiquadFilterNode(); }
     createMediaStreamDestination() { return new FakeMediaStreamDestinationNode(); }
-    async setSinkId(value) { this.sinkId = value; }
     async resume() { this.state = 'running'; }
     async close() { this.state = 'closed'; }
+  }
+  if (supportSinkChange) {
+    FakeAudioContext.prototype.setSinkId = async function setSinkId(value) { this.sinkId = value; };
   }
 
   window.AudioContext = FakeAudioContext;
@@ -313,15 +327,17 @@ function createWindow(label, userAgent, baseUrl = BASE_URL) {
       async enumerateDevices() {
         return [
           { kind: 'audioinput', deviceId: 'mic-1', label: `${label} Micrófono` },
-          { kind: 'audiooutput', deviceId: 'spk-1', label: `${label} Salida` },
+          { kind: 'audiooutput', deviceId: 'spk-1', label: outputLabel },
         ];
       },
       async getUserMedia() {
         return new FakeMediaStream([new FakeMediaStreamTrack('audio')]);
       },
-      async selectAudioOutput() {
-        return { deviceId: 'spk-1', label: `${label} Bluetooth` };
-      },
+      ...(supportDirectOutputPicker ? {
+        async selectAudioOutput() {
+          return { deviceId: 'spk-1', label: selectedOutputLabel };
+        },
+      } : {}),
       addEventListener(type, fn) {
         if (type === 'devicechange') deviceListeners.add(fn);
       },
@@ -464,7 +480,11 @@ function createWindow(label, userAgent, baseUrl = BASE_URL) {
     }
   }
 
-  window.RTCPeerConnection = FakeRTCPeerConnection;
+  if (supportRtc) {
+    window.RTCPeerConnection = FakeRTCPeerConnection;
+  } else {
+    delete window.RTCPeerConnection;
+  }
 
   window.eval(appJs);
 
@@ -510,184 +530,137 @@ async function main() {
   const swText = await fetch(`${BASE_URL}/sw.js`).then((r) => r.text());
   addCheck('Service worker responde', swText.includes('CACHE_NAME') && swText.includes("/app.js"));
 
-  const localWindow = createWindow('Localhost', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/130 Safari/537.36', 'http://localhost:3000');
-  const pc = createWindow('PC', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/130 Safari/537.36');
-  const phone = createWindow('Telefono', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1');
+  const phone = createWindow(
+    'Telefono',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1',
+    BASE_URL,
+    {
+      supportDirectOutputPicker: true,
+      supportSinkChange: true,
+      supportRtc: true,
+      outputLabel: 'Parlante Bluetooth del teléfono',
+      selectedOutputLabel: 'Parlante Bluetooth del teléfono',
+    },
+  );
+
+  const limitedPhone = createWindow(
+    'TelefonoSistema',
+    'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36',
+    BASE_URL,
+    {
+      supportDirectOutputPicker: false,
+      supportSinkChange: false,
+      supportRtc: false,
+      outputLabel: 'Parlante Bluetooth del sistema',
+      selectedOutputLabel: 'Parlante Bluetooth del sistema',
+    },
+  );
 
   try {
-    await waitFor(() => localWindow.window.__micRoomDebug?.snapshot?.(), { label: 'init localhost' });
-    await waitFor(() => pc.window.__micRoomDebug?.snapshot?.(), { label: 'init PC' });
-    await waitFor(() => phone.window.__micRoomDebug?.snapshot?.(), { label: 'init telefono' });
+    await waitFor(() => phone.window.__micRoomDebug?.snapshot?.(), { label: 'init telefono principal' });
+    await waitFor(() => limitedPhone.window.__micRoomDebug?.snapshot?.(), { label: 'init telefono sin selector' });
+    await waitFor(() => phone.window.__micRoomDebug.snapshot().serviceWorkerController === true, { label: 'SW telefono principal' });
+    await waitFor(() => limitedPhone.window.__micRoomDebug.snapshot().serviceWorkerController === true, { label: 'SW telefono sin selector' });
 
-    await type(localWindow.window, '#roomKey', 'prueba-lan');
-    await waitFor(() => localWindow.window.__micRoomDebug.snapshot().qrVisible, { label: 'QR localhost visible' });
-    const localSnap = localWindow.window.__micRoomDebug.snapshot();
-    if (localSnap.networkInfo?.suggestedOrigins?.length) {
-      const localShareHost = new URL(localSnap.qrLinkPreview).hostname;
-      addCheck(
-        'Si abres en localhost, el enlace compartido cambia a IP local',
-        localShareHost !== 'localhost' && localShareHost === new URL(localSnap.networkInfo.suggestedOrigins[0].origin).hostname,
-        localSnap.qrLinkPreview,
-      );
-    } else {
-      addWarning('No había IP local detectable para validar el reemplazo automático de localhost por IP.');
-    }
-
-    const pcInit = pc.window.__micRoomDebug.snapshot();
     const phoneInit = phone.window.__micRoomDebug.snapshot();
-    addCheck('App inicializa en ambos entornos', pcInit.joined === false && phoneInit.joined === false && pcInit.modeChosen === false && phoneInit.modeChosen === false);
+    addCheck(
+      'App arranca fija en modo Bluetooth local',
+      phoneInit.bluetoothOnlyMode === true && phoneInit.modeChosen === true && phoneInit.deviceMode === 'sender' && phoneInit.senderTarget === 'bluetooth-local',
+      JSON.stringify({ modeChosen: phoneInit.modeChosen, deviceMode: phoneInit.deviceMode, senderTarget: phoneInit.senderTarget }),
+    );
+    addCheck(
+      'Se ocultan funciones de sala y receptor',
+      phoneInit.shareBlockVisible === false && phoneInit.roomSendControlsVisible === false && phoneInit.roomMicControlsVisible === false && phoneInit.peersSectionVisible === false && phoneInit.logSectionVisible === false,
+    );
+    addCheck(
+      'Siguen visibles los controles útiles para Bluetooth',
+      phoneInit.outputCardVisible === true
+        && !phone.window.document.querySelector('#senderSettingsCard').classList.contains('d-none')
+        && !phone.window.document.querySelector('#localModeControls').classList.contains('d-none'),
+    );
+    addCheck(
+      'Service worker se registra en entorno simulado',
+      phone.window.__micRoomDebug.snapshot().serviceWorkerController === true && limitedPhone.window.__micRoomDebug.snapshot().serviceWorkerController === true,
+    );
 
-    await click(pc.window, '#deviceModeSenderBtn');
-    await waitFor(() => pc.window.__micRoomDebug.snapshot().deviceMode === 'sender' && pc.window.__micRoomDebug.snapshot().modeChosen === true, { label: 'PC emisor seleccionado' });
-    addCheck('El emisor se puede seleccionar', pc.window.__micRoomDebug.snapshot().lastToastMessage.includes('Emisor seleccionado'));
+    await click(phone.window, '#selectBtOutputBtn');
+    await waitFor(() => phone.window.document.querySelector('#outputSelect').value === 'spk-1', { label: 'salida bluetooth elegida' });
+    addCheck('Selector directo de Bluetooth actualiza la salida', phone.window.document.querySelector('#outputSelect').value === 'spk-1');
+    addCheck('Selector directo deja el nombre del parlante', phone.window.document.querySelector('#localOutputStatus').textContent.includes('Parlante Bluetooth del teléfono'));
 
-    await waitFor(() => pc.window.__micRoomDebug.snapshot().serviceWorkerController === true, { label: 'SW PC' });
-    await waitFor(() => phone.window.__micRoomDebug.snapshot().serviceWorkerController === true, { label: 'SW telefono' });
-    addCheck('Service worker se registra en entorno simulado', pc.window.__micRoomDebug.snapshot().serviceWorkerController === true && phone.window.__micRoomDebug.snapshot().serviceWorkerController === true);
+    await click(phone.window, '#localStartBtn');
+    await waitFor(() => phone.window.__micRoomDebug.snapshot().localPlaybackActive === true, { label: 'modo local continuo activo' });
+    addCheck('Micrófono Bluetooth continuo inicia', phone.window.__micRoomDebug.snapshot().localPlaybackActive === true);
+    addCheck('Micrófono continuo deja el track habilitado', phone.window.__micRoomDebug.snapshot().localTrack?.enabled === true);
 
-    const roomKey = 'arena-demo-2026';
-    await type(pc.window, '#roomKey', roomKey);
-    await type(pc.window, '#displayName', 'PC emisor');
-    await type(phone.window, '#roomKey', roomKey);
-    await type(phone.window, '#displayName', 'Telefono receptor');
+    await click(phone.window, '#localStopBtn');
+    await waitFor(() => phone.window.__micRoomDebug.snapshot().localPlaybackActive === false, { label: 'modo local continuo detenido' });
+    addCheck('Micrófono Bluetooth continuo se detiene', phone.window.__micRoomDebug.snapshot().localPlaybackActive === false);
 
-    await waitFor(() => pc.window.__micRoomDebug.snapshot().qrVisible, { label: 'QR visible' });
-    const qrSnap = pc.window.__micRoomDebug.snapshot();
-    addCheck('QR se genera al escribir clave', qrSnap.qrVisible === true && qrSnap.qrLinkPreview.includes('#k=arena-demo-2026'));
-    addCheck('Huella de sala se calcula', qrSnap.roomFingerprint !== '—', qrSnap.roomFingerprint);
-    addCheck('El enlace compartido deja listo al receptor', qrSnap.qrLinkPreview.includes('mode=receiver'));
-
-    await click(pc.window, '#copyLinkBtn');
-    await waitFor(() => pc.clipboardStore.text.includes('#k=arena-demo-2026'), { label: 'copiado de enlace' });
-    addCheck('Copiar enlace funciona', pc.clipboardStore.text.includes('#k=arena-demo-2026'), pc.clipboardStore.text);
-
-    await select(pc.window, '#senderTarget', 'bluetooth-local');
-    await waitFor(() => pc.window.__micRoomDebug.snapshot().senderTarget === 'bluetooth-local', { label: 'selector bluetooth local' });
-    await click(pc.window, '#selectBtOutputBtn');
-    addCheck('Selector de salida Bluetooth actualiza la salida', pc.window.document.querySelector('#outputSelect').value === 'spk-1');
-
-    await click(pc.window, '#localStartBtn');
-    await waitFor(() => pc.window.__micRoomDebug.snapshot().localPlaybackActive === true, { label: 'modo local activo' });
-    addCheck('Modo local simple inicia sin sala', pc.window.__micRoomDebug.snapshot().localPlaybackActive === true);
-    addCheck('Modo local continuo deja el track habilitado', pc.window.__micRoomDebug.snapshot().localTrack?.enabled === true);
-    await click(pc.window, '#localStopBtn');
-    await waitFor(() => pc.window.__micRoomDebug.snapshot().localPlaybackActive === false, { label: 'modo local detenido' });
-    addCheck('Modo local simple se detiene', pc.window.__micRoomDebug.snapshot().localPlaybackActive === false);
-
-    const localPttButton = pc.window.document.querySelector('#localPttBtn');
-    localPttButton.dispatchEvent(new pc.window.PointerEvent('pointerdown', { bubbles: true }));
+    const localPttButton = phone.window.document.querySelector('#localPttBtn');
+    localPttButton.dispatchEvent(new phone.window.PointerEvent('pointerdown', { bubbles: true }));
     await waitFor(() => {
-      const s = pc.window.__micRoomDebug.snapshot();
+      const s = phone.window.__micRoomDebug.snapshot();
       return s.localPlaybackActive === true && s.localPttActive === true && s.localTrack?.enabled === true;
-    }, { timeout: 10000, label: 'local ptt activo' });
-    addCheck('Pulsa para hablar Bluetooth activa el micrófono mientras se mantiene pulsado', pc.window.__micRoomDebug.snapshot().localPttActive === true);
+    }, { timeout: 10000, label: 'local ptt activo telefono' });
+    addCheck('Pulsa para hablar Bluetooth activa el micrófono al mantener pulsado', phone.window.__micRoomDebug.snapshot().localPttActive === true);
 
-    localPttButton.dispatchEvent(new pc.window.PointerEvent('pointerup', { bubbles: true }));
+    localPttButton.dispatchEvent(new phone.window.PointerEvent('pointerup', { bubbles: true }));
     await waitFor(() => {
-      const s = pc.window.__micRoomDebug.snapshot();
+      const s = phone.window.__micRoomDebug.snapshot();
       return s.localPlaybackActive === false && s.localPttActive === false;
-    }, { timeout: 10000, label: 'local ptt detenido' });
-    addCheck('Pulsa para hablar Bluetooth se detiene al soltar', pc.window.__micRoomDebug.snapshot().localPlaybackActive === false && pc.window.__micRoomDebug.snapshot().localPttActive === false);
+    }, { timeout: 10000, label: 'local ptt detenido telefono' });
+    addCheck('Pulsa para hablar Bluetooth se detiene al soltar', phone.window.__micRoomDebug.snapshot().localPlaybackActive === false && phone.window.__micRoomDebug.snapshot().localPttActive === false);
 
-    await select(pc.window, '#senderTarget', 'pc-wifi');
-    await waitFor(() => pc.window.__micRoomDebug.snapshot().senderTarget === 'pc-wifi', { label: 'selector PC wifi' });
-    await click(phone.window, '#deviceModeReceiverBtn');
-    await waitFor(() => phone.window.__micRoomDebug.snapshot().deviceMode === 'receiver' && phone.window.__micRoomDebug.snapshot().modeChosen === true, { label: 'telefono receptor' });
-    addCheck('El receptor se puede seleccionar', phone.window.__micRoomDebug.snapshot().lastToastMessage.includes('Receptor seleccionado'));
+    await select(phone.window, '#qualityPreset', 'high');
+    await waitFor(() => phone.window.__micRoomDebug.snapshot().bitrateKbps === 72, { timeout: 10000, label: 'preset high local' });
+    addCheck('Calidad alta actualiza el bitrate local a 72 kbps', phone.window.__micRoomDebug.snapshot().bitrateKbps === 72);
 
-    await click(pc.window, '#connectBtn');
-    await waitFor(() => pc.window.__micRoomDebug.snapshot().joined === true, { label: 'PC entra a sala' });
-    addCheck('El emisor queda esperando al receptor', pc.window.__micRoomDebug.snapshot().statusText.includes('esperando receptor'), pc.window.__micRoomDebug.snapshot().statusText);
-
-    await click(phone.window, '#connectBtn');
-    await waitFor(() => phone.window.__micRoomDebug.snapshot().joined === true, { label: 'Telefono entra a sala' });
-    addCheck('Ambos dispositivos entran a la sala', true);
-    addCheck('El receptor usa flujo separado', phone.window.__micRoomDebug.snapshot().connectButtonLabel === 'Conectar como receptor');
-
-    await waitFor(() => pc.window.__micRoomDebug.snapshot().peers.length > 0, { label: 'receptor aparece en lista del emisor' });
-    addCheck('El emisor ve al receptor conectado', pc.window.__micRoomDebug.snapshot().peerSummaryText.toLowerCase().includes('receptor'));
-
-    await click(pc.window, '#startMicBtn');
-    await waitFor(() => pc.window.__micRoomDebug.snapshot().localTrack?.readyState === 'live', { label: 'microfono live' });
-    addCheck('Micrófono local arranca', true);
-
-    await waitFor(() => {
-      const s = pc.window.__micRoomDebug.snapshot();
-      return s.peers.length > 0 && s.peers.every((peer) => peer.connectionState === 'connected');
-    }, { timeout: 15000, label: 'WebRTC conectado emisor' });
-    await waitFor(() => {
-      const s = phone.window.__micRoomDebug.snapshot();
-      return s.peers.length > 0 && s.peers.every((peer) => peer.connectionState === 'connected');
-    }, { timeout: 15000, label: 'WebRTC conectado receptor' });
-    addCheck('WebRTC conecta ambos peers', true);
-
-    await waitFor(() => {
-      const s = phone.window.__micRoomDebug.snapshot();
-      return s.peers.some((peer) => peer.remoteAudioHasStream && peer.remoteAudioTrackCount >= 1);
-    }, { timeout: 10000, label: 'audio remoto receptor' });
-    addCheck('El receptor recibe stream remoto', true, JSON.stringify(phone.window.__micRoomDebug.snapshot().peers));
-
-    await select(pc.window, '#qualityPreset', 'high');
-    await waitFor(() => {
-      const s = pc.window.__micRoomDebug.snapshot();
-      return s.bitrateKbps === 72 && s.peers.some((peer) => peer.senderMaxBitrate === 72000);
-    }, { timeout: 10000, label: 'bitrate alto aplicado' });
-    addCheck('Calidad alta aplica bitrate 72 kbps', true);
-
-    await select(pc.window, '#qualityPreset', 'custom');
-    const bitrateRange = pc.window.document.querySelector('#bitrateRange');
+    await select(phone.window, '#qualityPreset', 'custom');
+    const bitrateRange = phone.window.document.querySelector('#bitrateRange');
     bitrateRange.value = '80';
-    bitrateRange.dispatchEvent(new pc.window.Event('input', { bubbles: true }));
-    bitrateRange.dispatchEvent(new pc.window.Event('change', { bubbles: true }));
+    bitrateRange.dispatchEvent(new phone.window.Event('input', { bubbles: true }));
+    bitrateRange.dispatchEvent(new phone.window.Event('change', { bubbles: true }));
+    await waitFor(() => phone.window.__micRoomDebug.snapshot().bitrateKbps === 80, { timeout: 10000, label: 'preset custom 80 local' });
+    addCheck('Calidad personalizada actualiza el bitrate local a 80 kbps', phone.window.__micRoomDebug.snapshot().bitrateKbps === 80);
+
+    const gain = phone.window.document.querySelector('#filterGain');
+    gain.value = '125';
+    gain.dispatchEvent(new phone.window.Event('input', { bubbles: true }));
+    await waitFor(() => phone.window.__micRoomDebug.snapshot().filterSettings.gain === 125, { timeout: 10000, label: 'ganancia 125 local' });
+    addCheck('Los filtros de audio siguen disponibles en modo Bluetooth', phone.window.__micRoomDebug.snapshot().filterSettings.gain === 125);
+
+    const limitedInit = limitedPhone.window.__micRoomDebug.snapshot();
+    addCheck(
+      'Sin selector directo, el botón queda desactivado y no obliga a WebRTC',
+      limitedInit.directOutputPickerEnabled === false && limitedInit.selectBtOutputDisabled === true && limitedInit.bluetoothOnlyMode === true,
+    );
+    addCheck(
+      'Sin soporte de cambio de salida, muestra instrucción de usar Bluetooth del sistema',
+      /sistema del tel[eé]fono|salida multimedia/i.test(limitedInit.localOutputStatus),
+      limitedInit.localOutputStatus,
+    );
+
+    const limitedPttButton = limitedPhone.window.document.querySelector('#localPttBtn');
+    limitedPttButton.dispatchEvent(new limitedPhone.window.PointerEvent('pointerdown', { bubbles: true }));
     await waitFor(() => {
-      const s = pc.window.__micRoomDebug.snapshot();
-      return s.bitrateKbps === 80 && s.peers.some((peer) => peer.senderMaxBitrate === 80000);
-    }, { timeout: 10000, label: 'bitrate custom 80 aplicado' });
-    addCheck('Calidad personalizada aplica bitrate 80 kbps', true);
+      const s = limitedPhone.window.__micRoomDebug.snapshot();
+      return s.localPlaybackActive === true && s.localPttActive === true && s.localTrack?.enabled === true;
+    }, { timeout: 10000, label: 'local ptt activo telefono sin selector' });
+    addCheck('El Bluetooth local funciona aunque el navegador no deje elegir la salida', limitedPhone.window.__micRoomDebug.snapshot().localPttActive === true);
 
-    await select(pc.window, '#talkMode', 'push-to-talk');
+    limitedPttButton.dispatchEvent(new limitedPhone.window.PointerEvent('pointerup', { bubbles: true }));
     await waitFor(() => {
-      const s = pc.window.__micRoomDebug.snapshot();
-      return s.talkMode === 'push-to-talk' && s.localTrack && s.localTrack.enabled === false;
-    }, { timeout: 10000, label: 'ptt suelto silenciado' });
-    addCheck('Push-to-talk silencia al soltar', true);
-
-    const pttButton = pc.window.document.querySelector('#pttButton');
-    pttButton.dispatchEvent(new pc.window.PointerEvent('pointerdown', { bubbles: true }));
-    await waitFor(() => {
-      const s = pc.window.__micRoomDebug.snapshot();
-      return s.pttPressed === true && s.localTrack && s.localTrack.enabled === true;
-    }, { timeout: 10000, label: 'ptt pulsado activo' });
-    addCheck('Push-to-talk activa el track al pulsar', true);
-
-    pttButton.dispatchEvent(new pc.window.PointerEvent('pointerup', { bubbles: true }));
-    await waitFor(() => {
-      const s = pc.window.__micRoomDebug.snapshot();
-      return s.pttPressed === false && s.localTrack && s.localTrack.enabled === false;
-    }, { timeout: 10000, label: 'ptt suelto' });
-    addCheck('Push-to-talk vuelve a silenciar al soltar', true);
-
-    pc.window.dispatchEvent(new pc.window.KeyboardEvent('keydown', { code: 'Space', bubbles: true }));
-    await waitFor(() => pc.window.__micRoomDebug.snapshot().localTrack.enabled === true, { timeout: 10000, label: 'PTT tecla espacio down' });
-    pc.window.dispatchEvent(new pc.window.KeyboardEvent('keyup', { code: 'Space', bubbles: true }));
-    await waitFor(() => pc.window.__micRoomDebug.snapshot().localTrack.enabled === false, { timeout: 10000, label: 'PTT tecla espacio up' });
-    addCheck('Push-to-talk funciona con barra espaciadora', true);
-
-    await click(pc.window, '#localMonitorCheckbox');
-    addCheck('Monitoreo local se activa', pc.window.__micRoomDebug.snapshot().localMonitorActive === true);
-
-    await click(pc.window, '#disconnectBtn');
-    await click(phone.window, '#disconnectBtn');
-    await waitFor(() => pc.window.__micRoomDebug.snapshot().joined === false, { label: 'PC sale de sala' });
-    await waitFor(() => phone.window.__micRoomDebug.snapshot().joined === false, { label: 'Telefono sale de sala' });
-    addCheck('Salida limpia de la sala', true);
+      const s = limitedPhone.window.__micRoomDebug.snapshot();
+      return s.localPlaybackActive === false && s.localPttActive === false;
+    }, { timeout: 10000, label: 'local ptt detenido telefono sin selector' });
+    addCheck('El Bluetooth local también se detiene correctamente en navegadores limitados', limitedPhone.window.__micRoomDebug.snapshot().localPlaybackActive === false);
 
     addWarning('Bluetooth real no se puede probar dentro de este sandbox porque no hay acceso a hardware Bluetooth.');
-    addWarning('La instalación completa en Android/iPhone depende del navegador y del sistema operativo reales; aquí validé manifest, service worker, assets PWA y lógica de UI.');
+    addWarning('La salida Bluetooth final en el teléfono depende del navegador móvil y del sistema operativo reales; aquí validé la lógica, la UI y el fallback de salida por sistema.');
   } finally {
-    localWindow.window.close();
-    pc.window.close();
     phone.window.close();
+    limitedPhone.window.close();
   }
 }
 

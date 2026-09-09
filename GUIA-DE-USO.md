@@ -1,110 +1,81 @@
 # Guía rápida de Mic Room
 
-## Orden correcto
+## Uso actual
 
-1. toca **Emisor** o **Receptor**,
-2. elige el destino,
-3. si es por red, escribe la clave,
-4. pulsa **Crear / conectar sala**,
-5. espera a que el otro dispositivo aparezca en **Dispositivos conectados**,
-6. habla,
-7. ajusta filtros en tiempo real si quieres.
+Esta versión está enfocada solo en:
+
+**teléfono como micrófono** → **parlante Bluetooth del mismo teléfono**
+
+Las otras funciones quedaron ocultas para que el manejo sea más simple.
 
 ---
 
-## Emisor
+## Pasos
 
-### Enviar a un PC por red
-1. Toca **Emisor**.
-2. Elige **Un PC por la misma red Wi‑Fi / Internet**.
-3. Escribe una clave.
-4. Comparte el enlace o el QR.
-5. Espera a que el PC aparezca en **Dispositivos conectados**.
-6. Pulsa **Mantener micrófono encendido** o **Hablar ahora**.
-
-### Enviar a otro teléfono por red
-1. Toca **Emisor**.
-2. Elige **Otro teléfono por la misma red Wi‑Fi / Internet**.
-3. Escribe una clave.
-4. Comparte el enlace o el QR.
-5. En el otro teléfono, ábrelo como **Receptor**.
-6. Espera a que ese teléfono aparezca en **Dispositivos conectados**.
-7. Habla.
-
-> Importante: entre dos teléfonos, la web se conecta por **red**, no por Bluetooth directo entre navegadores.
->
-> Si quieres Bluetooth, el teléfono receptor puede sacar el audio por sus propios audífonos o parlante Bluetooth emparejados en ese mismo teléfono.
-
-### Bluetooth local
-1. Toca **Emisor**.
-2. Elige **Parlante / audífonos Bluetooth de este mismo dispositivo**.
-3. Empareja el Bluetooth en el sistema.
-4. Elige la salida de audio.
-5. Usa **Micrófono Bluetooth continuo** si quieres dejar el micrófono abierto.
-6. O mantén pulsado **Pulsa para hablar por Bluetooth** para hablar solo mientras tengas el dedo encima.
-
-> Aquí no se usa clave ni sala.
->
-> El parlante Bluetooth no aparecerá en **Dispositivos conectados** porque esa lista solo muestra otros clientes web.
+1. Conecta tu parlante o audífonos Bluetooth desde el sistema del teléfono.
+2. Abre la web en el teléfono.
+3. Revisa la sección **Salida del teléfono**.
+4. Si el navegador lo permite, elige ahí el parlante Bluetooth.
+5. Si aparece el aviso de que el navegador no soporta la selección directa, no es un fallo de la app:
+   - deja el parlante Bluetooth conectado en el sistema,
+   - úsalo como salida multimedia del teléfono,
+   - y luego habla desde la web.
+6. Usa una de estas dos opciones:
+   - **Micrófono Bluetooth continuo**
+   - **Pulsa para hablar por Bluetooth**
+7. Ajusta **Audio, calidad y filtros** si quieres.
 
 ---
 
-## Receptor
+## Qué hace cada botón
 
-1. Toca **Receptor**.
-2. Abre el enlace compartido o escribe la misma clave del emisor.
-3. Pulsa **Conectar como receptor**.
-4. Elige la salida de audio.
-5. Si no suena, pulsa **Reactivar audio**.
-6. Espera a que el emisor active el micrófono.
+### Micrófono Bluetooth continuo
+Mantiene el micrófono abierto hasta que pulses **Detener Bluetooth local**.
 
----
+### Pulsa para hablar por Bluetooth
+Solo transmite mientras mantienes el dedo pulsando el botón.
 
-## Alertas pequeñas
-
-Si algo salió bien verás avisos pequeños, por ejemplo:
-
-- **Emisor seleccionado**
-- **Receptor seleccionado**
-- **Sala creada con éxito**
-- **Receptor conectado con éxito**
-- **Micrófono activado con éxito**
+### Detener Bluetooth local
+Apaga el envío local al parlante Bluetooth.
 
 ---
 
-## Filtros y calidad
+## Si tu navegador dice que no soporta cambiar la salida
 
-Desde el emisor puedes mover en tiempo real:
+Eso significa que la web **no puede forzar** el cambio de parlante desde dentro del navegador.
 
-- **Volumen**
-- **Graves**
-- **Presencia**
-- **Agudos**
+Haz esto:
 
-También puedes cambiar:
+1. sal de la web si hace falta,
+2. conecta el parlante Bluetooth en ajustes del teléfono,
+3. confirma que música o audio normal del teléfono salga por ese parlante,
+4. vuelve a la web,
+5. usa **Pulsa para hablar por Bluetooth**.
 
-- preset de calidad,
-- bitrate manual,
-- push-to-talk.
+---
+
+## Ajustes disponibles
+
+Puedes seguir usando:
+
+- selección de micrófono
+- preset de calidad
+- bitrate manual
+- Volumen
+- Graves
+- Presencia
+- Agudos
 
 ---
 
 ## GitHub Pages
 
-Si quieres publicar la interfaz en GitHub Pages, ahora tienes 2 opciones:
+Puedes publicar así:
 
-- publicar la **raíz** del repo, usando `index.html` que redirige a `docs/`
-- o publicar directamente la carpeta `docs/`
+- la **raíz** del repo, usando `index.html` que redirige a `docs/`
+- o directamente `docs/`
 
-### Ojo
-- el modo **Bluetooth local** puede funcionar como sitio estático,
-- el modo **sala por clave** necesita además un servidor de señalización.
-
-Ejemplo:
-
-```text
-https://TU-USUARIO.github.io/TU-REPO/?signal=https://tu-servidor-node.example.com
-```
+Para este flujo Bluetooth local, GitHub Pages sí basta.
 
 ---
 
@@ -112,23 +83,20 @@ https://TU-USUARIO.github.io/TU-REPO/?signal=https://tu-servidor-node.example.co
 
 Última validación automática:
 
-- **33 checks OK**
+- **25 checks OK**
 - **0 fallos**
-- **3 advertencias esperadas**
+- **2 advertencias esperadas**
 
 Se probó:
-- selección de emisor y receptor,
-- Bluetooth local simulado,
-- flujo por sala,
-- QR,
-- enlace para receptor,
-- aparición del receptor,
-- WebRTC,
-- audio remoto,
+- modo Bluetooth local por defecto,
+- ocultamiento de funciones no usadas,
+- selector directo de salida cuando existe,
+- fallback a Bluetooth del sistema cuando no existe,
+- micrófono continuo,
+- pulsa para hablar,
 - calidad,
-- push-to-talk,
-- monitoreo local,
-- salida limpia.
+- bitrate,
+- filtros.
 
 Reporte:
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mic Room · micrófono web simple</title>
-  <meta name="description" content="Usa tu teléfono como micrófono y escucha en un PC, otro teléfono o un parlante Bluetooth con un flujo más simple.">
+  <meta name="description" content="Usa tu teléfono como micrófono y saca la voz por un parlante Bluetooth ya emparejado, con el flujo más simple posible.">
   <meta name="theme-color" content="#0f172a">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml">
@@ -28,7 +28,7 @@
             </span>
             <div class="min-w-0">
               <div class="brand-title">Mic Room</div>
-              <div class="small text-body-secondary">elige rol → elige destino → conecta → espera al otro dispositivo → habla</div>
+              <div class="small text-body-secondary">conecta el parlante Bluetooth en tu teléfono → pulsa para hablar → escucha por el parlante</div>
             </div>
           </div>
 
@@ -39,17 +39,17 @@
         </div>
       </header>
 
-      <section class="card border-0 shadow-soft glass-card mb-4">
+      <section id="roleSection" class="card border-0 shadow-soft glass-card mb-4">
         <div class="card-body p-4">
           <div class="d-flex align-items-center gap-3 mb-3">
             <div class="section-icon bg-primary-subtle text-primary-emphasis">1</div>
             <div>
-              <h1 class="h4 mb-1">Primero elige si este dispositivo será emisor o receptor</h1>
-              <p class="text-body-secondary mb-0">Ambas secciones son desplegables y empiezan contraídas.</p>
+              <h1 class="h4 mb-1">Micrófono Bluetooth simple</h1>
+              <p class="text-body-secondary mb-0">Esta versión queda enfocada solo en usar este teléfono como micrófono para tu parlante Bluetooth.</p>
             </div>
           </div>
 
-          <div class="accordion compact-accordion" id="roleAccordion">
+          <div class="accordion compact-accordion d-none" id="roleAccordion">
             <div class="accordion-item role-item bg-transparent border-0 mb-3">
               <h2 class="accordion-header">
                 <button id="deviceModeSenderBtn" class="accordion-button collapsed role-accordion-btn" type="button" aria-expanded="false" aria-controls="senderModePanel">
@@ -81,12 +81,12 @@
             </div>
           </div>
 
-          <div id="deviceModeHint" class="small text-body-secondary mt-3">Primero toca una de las dos opciones de arriba.</div>
-          <div id="roomProgressText" class="alert alert-info border-0 mt-3 mb-0 info-panel">Selecciona Emisor o Receptor para ver el siguiente paso.</div>
+          <div id="deviceModeHint" class="small text-body-secondary mt-3 d-none">Primero toca una de las dos opciones de arriba.</div>
+          <div id="roomProgressText" class="alert alert-info border-0 mt-3 mb-0 info-panel">Conecta el parlante Bluetooth en el teléfono y luego usa uno de los botones para hablar.</div>
         </div>
       </section>
 
-      <section class="card border-0 shadow-soft glass-card mb-4">
+      <section id="connectionSection" class="card border-0 shadow-soft glass-card mb-4">
         <div class="card-body p-4">
           <div class="d-flex align-items-center gap-3 mb-3">
             <div class="section-icon bg-info-subtle text-info-emphasis">2</div>
@@ -137,7 +137,7 @@
             <div id="localModeStatus" class="alert alert-secondary border-0 mb-0 status-panel">Detenido. Este modo no necesita sala ni clave. El parlante Bluetooth no aparecerá en “Dispositivos conectados”.</div>
           </div>
 
-          <div class="d-grid d-sm-flex gap-2 mt-3">
+          <div id="networkButtonsRow" class="d-grid d-sm-flex gap-2 mt-3">
             <button id="connectBtn" class="btn btn-primary btn-lg flex-fill" disabled>Crear / conectar sala</button>
             <button id="disconnectBtn" class="btn btn-outline-danger btn-lg flex-fill" disabled>Salir de la sala</button>
           </div>
@@ -199,31 +199,33 @@
             <select id="inputSelect" class="form-select"></select>
           </div>
 
-          <div class="mb-3">
-            <label for="talkMode" class="form-label">Modo de hablar</label>
-            <select id="talkMode" class="form-select">
-              <option value="always-on">Mantener micrófono encendido</option>
-              <option value="push-to-talk">Hablar solo al pulsar</option>
-            </select>
-          </div>
-
-          <div class="d-grid d-sm-flex gap-2 mb-3">
-            <button id="startMicBtn" class="btn btn-success flex-fill" disabled>Mantener micrófono encendido</button>
-            <button id="stopMicBtn" class="btn btn-outline-secondary flex-fill" disabled>Apagar micrófono</button>
-            <button id="pttButton" class="btn btn-outline-info flex-fill ptt-button" disabled>Hablar ahora</button>
-          </div>
-
-          <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
-            <div>
-              <div class="small text-uppercase text-body-secondary fw-semibold">Estado del habla</div>
-              <div id="pttHint" class="small text-body-secondary">Conecta primero la sala y espera al receptor.</div>
+          <div id="roomMicControls">
+            <div class="mb-3">
+              <label for="talkMode" class="form-label">Modo de hablar</label>
+              <select id="talkMode" class="form-select">
+                <option value="always-on">Mantener micrófono encendido</option>
+                <option value="push-to-talk">Hablar solo al pulsar</option>
+              </select>
             </div>
-            <span id="pttState" class="badge rounded-pill text-bg-secondary">Desconectado</span>
-          </div>
 
-          <div class="form-check form-switch monitor-switch mb-3">
-            <input id="localMonitorCheckbox" class="form-check-input" type="checkbox" role="switch">
-            <label class="form-check-label" for="localMonitorCheckbox">Escuchar también en este dispositivo</label>
+            <div class="d-grid d-sm-flex gap-2 mb-3">
+              <button id="startMicBtn" class="btn btn-success flex-fill" disabled>Mantener micrófono encendido</button>
+              <button id="stopMicBtn" class="btn btn-outline-secondary flex-fill" disabled>Apagar micrófono</button>
+              <button id="pttButton" class="btn btn-outline-info flex-fill ptt-button" disabled>Hablar ahora</button>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+              <div>
+                <div class="small text-uppercase text-body-secondary fw-semibold">Estado del habla</div>
+                <div id="pttHint" class="small text-body-secondary">Conecta primero la sala y espera al receptor.</div>
+              </div>
+              <span id="pttState" class="badge rounded-pill text-bg-secondary">Desconectado</span>
+            </div>
+
+            <div class="form-check form-switch monitor-switch mb-3">
+              <input id="localMonitorCheckbox" class="form-check-input" type="checkbox" role="switch">
+              <label class="form-check-label" for="localMonitorCheckbox">Escuchar también en este dispositivo</label>
+            </div>
           </div>
 
           <div class="meter-panel rounded-4 p-3 mb-3">
@@ -309,7 +311,7 @@
             <select id="outputSelect" class="form-select"></select>
           </div>
 
-          <div class="d-grid d-sm-flex gap-2 mb-3">
+          <div id="outputActionsRow" class="d-grid d-sm-flex gap-2 mb-3">
             <button id="selectBtOutputBtn" class="btn btn-outline-info">Elegir salida Bluetooth</button>
             <button id="unlockAudioBtn" class="btn btn-outline-light" disabled>Reactivar audio</button>
           </div>
@@ -332,7 +334,7 @@
         </div>
       </section>
 
-      <section class="card border-0 shadow-soft glass-card mb-4">
+      <section id="peersSection" class="card border-0 shadow-soft glass-card mb-4">
         <div class="card-body p-4">
           <div class="d-flex align-items-center gap-3 mb-3">
             <div class="section-icon bg-secondary-subtle text-secondary-emphasis">7</div>
@@ -345,7 +347,7 @@
         </div>
       </section>
 
-      <section class="card border-0 shadow-soft glass-card">
+      <section id="logSection" class="card border-0 shadow-soft glass-card">
         <div class="card-body p-4">
           <div class="accordion compact-accordion" id="logAccordion">
             <div class="accordion-item bg-transparent border-0">

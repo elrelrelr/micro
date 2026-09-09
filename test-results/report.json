@@ -1,6 +1,6 @@
 {
   "baseUrl": "http://127.0.0.1:3000",
-  "startedAt": "2026-09-09T21:21:47.718Z",
+  "startedAt": "2026-09-09T21:43:49.925Z",
   "checks": [
     {
       "name": "Servidor JS existe",
@@ -25,7 +25,7 @@
     {
       "name": "API health responde",
       "pass": true,
-      "details": "{\"ok\":true,\"rooms\":0,\"time\":\"2026-09-09T21:21:47.733Z\"}"
+      "details": "{\"ok\":true,\"rooms\":0,\"time\":\"2026-09-09T21:43:49.940Z\"}"
     },
     {
       "name": "Manifest PWA responde",
@@ -38,12 +38,17 @@
       "details": ""
     },
     {
-      "name": "App inicializa en ambos entornos",
+      "name": "App arranca fija en modo Bluetooth local",
+      "pass": true,
+      "details": "{\"modeChosen\":true,\"deviceMode\":\"sender\",\"senderTarget\":\"bluetooth-local\"}"
+    },
+    {
+      "name": "Se ocultan funciones de sala y receptor",
       "pass": true,
       "details": ""
     },
     {
-      "name": "El emisor se puede seleccionar",
+      "name": "Siguen visibles los controles útiles para Bluetooth",
       "pass": true,
       "details": ""
     },
@@ -53,47 +58,32 @@
       "details": ""
     },
     {
-      "name": "QR se genera al escribir clave",
+      "name": "Selector directo de Bluetooth actualiza la salida",
       "pass": true,
       "details": ""
     },
     {
-      "name": "Huella de sala se calcula",
-      "pass": true,
-      "details": "83bf59…d0ab"
-    },
-    {
-      "name": "El enlace compartido deja listo al receptor",
+      "name": "Selector directo deja el nombre del parlante",
       "pass": true,
       "details": ""
     },
     {
-      "name": "Copiar enlace funciona",
-      "pass": true,
-      "details": "http://169.254.0.21:3000/#k=arena-demo-2026&mode=receiver&rx=pc"
-    },
-    {
-      "name": "Selector de salida Bluetooth actualiza la salida",
+      "name": "Micrófono Bluetooth continuo inicia",
       "pass": true,
       "details": ""
     },
     {
-      "name": "Modo local simple inicia sin sala",
+      "name": "Micrófono continuo deja el track habilitado",
       "pass": true,
       "details": ""
     },
     {
-      "name": "Modo local continuo deja el track habilitado",
+      "name": "Micrófono Bluetooth continuo se detiene",
       "pass": true,
       "details": ""
     },
     {
-      "name": "Modo local simple se detiene",
-      "pass": true,
-      "details": ""
-    },
-    {
-      "name": "Pulsa para hablar Bluetooth activa el micrófono mientras se mantiene pulsado",
+      "name": "Pulsa para hablar Bluetooth activa el micrófono al mantener pulsado",
       "pass": true,
       "details": ""
     },
@@ -103,97 +93,51 @@
       "details": ""
     },
     {
-      "name": "El receptor se puede seleccionar",
+      "name": "Calidad alta actualiza el bitrate local a 72 kbps",
       "pass": true,
       "details": ""
     },
     {
-      "name": "El emisor queda esperando al receptor",
-      "pass": true,
-      "details": "esperando receptor"
-    },
-    {
-      "name": "Ambos dispositivos entran a la sala",
+      "name": "Calidad personalizada actualiza el bitrate local a 80 kbps",
       "pass": true,
       "details": ""
     },
     {
-      "name": "El receptor usa flujo separado",
+      "name": "Los filtros de audio siguen disponibles en modo Bluetooth",
       "pass": true,
       "details": ""
     },
     {
-      "name": "El emisor ve al receptor conectado",
+      "name": "Sin selector directo, el botón queda desactivado y no obliga a WebRTC",
       "pass": true,
       "details": ""
     },
     {
-      "name": "Micrófono local arranca",
+      "name": "Sin soporte de cambio de salida, muestra instrucción de usar Bluetooth del sistema",
+      "pass": true,
+      "details": "Se detectó “Parlante Bluetooth del sistema”, pero este navegador no puede cambiar la salida desde la web. Déjalo como salida multimedia del sistema del teléfono."
+    },
+    {
+      "name": "El Bluetooth local funciona aunque el navegador no deje elegir la salida",
       "pass": true,
       "details": ""
     },
     {
-      "name": "WebRTC conecta ambos peers",
-      "pass": true,
-      "details": ""
-    },
-    {
-      "name": "El receptor recibe stream remoto",
-      "pass": true,
-      "details": "[{\"peerId\":\"e8fbd417-9236-4e96-974b-034a22e2e952\",\"name\":\"PC emisor\",\"polite\":false,\"connectionState\":\"connected\",\"iceConnectionState\":\"connected\",\"signalingState\":\"stable\",\"remoteAudioPaused\":false,\"remoteAudioHasStream\":true,\"remoteAudioTrackCount\":1,\"senderTrackEnabled\":null,\"senderTrackReadyState\":null,\"senderMaxBitrate\":null}]"
-    },
-    {
-      "name": "Calidad alta aplica bitrate 72 kbps",
-      "pass": true,
-      "details": ""
-    },
-    {
-      "name": "Calidad personalizada aplica bitrate 80 kbps",
-      "pass": true,
-      "details": ""
-    },
-    {
-      "name": "Push-to-talk silencia al soltar",
-      "pass": true,
-      "details": ""
-    },
-    {
-      "name": "Push-to-talk activa el track al pulsar",
-      "pass": true,
-      "details": ""
-    },
-    {
-      "name": "Push-to-talk vuelve a silenciar al soltar",
-      "pass": true,
-      "details": ""
-    },
-    {
-      "name": "Push-to-talk funciona con barra espaciadora",
-      "pass": true,
-      "details": ""
-    },
-    {
-      "name": "Monitoreo local se activa",
-      "pass": true,
-      "details": ""
-    },
-    {
-      "name": "Salida limpia de la sala",
+      "name": "El Bluetooth local también se detiene correctamente en navegadores limitados",
       "pass": true,
       "details": ""
     }
   ],
   "warnings": [
-    "No había IP local detectable para validar el reemplazo automático de localhost por IP.",
     "Bluetooth real no se puede probar dentro de este sandbox porque no hay acceso a hardware Bluetooth.",
-    "La instalación completa en Android/iPhone depende del navegador y del sistema operativo reales; aquí validé manifest, service worker, assets PWA y lógica de UI."
+    "La salida Bluetooth final en el teléfono depende del navegador móvil y del sistema operativo reales; aquí validé la lógica, la UI y el fallback de salida por sistema."
   ],
   "errors": [],
-  "finishedAt": "2026-09-09T21:21:48.564Z",
+  "finishedAt": "2026-09-09T21:43:50.497Z",
   "summary": {
-    "passed": 36,
+    "passed": 25,
     "failed": 0,
-    "warnings": 3,
+    "warnings": 2,
     "errors": 0
   }
 }
