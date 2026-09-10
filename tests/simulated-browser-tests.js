@@ -150,6 +150,7 @@ function createWindow(label, userAgent, baseUrl = BASE_URL, options = {}) {
     selectedOutputLabel = `${label} Bluetooth`,
     microphonePermissionState = 'prompt',
     denyGetUserMedia = false,
+    supportAudioSession = false,
   } = options;
 
   const dom = new JSDOM(html, {
@@ -231,6 +232,28 @@ function createWindow(label, userAgent, baseUrl = BASE_URL, options = {}) {
       return { state: currentMicrophonePermissionState };
     },
   };
+
+  if (supportAudioSession) {
+    let audioSessionType = 'auto';
+    let audioSessionState = 'inactive';
+    const audioSession = {
+      get type() {
+        return audioSessionType;
+      },
+      set type(value) {
+        audioSessionType = value;
+        audioSessionState = value === 'auto' ? 'inactive' : 'active';
+        if (typeof audioSession.onstatechange === 'function') {
+          queueMicrotask(() => audioSession.onstatechange());
+        }
+      },
+      get state() {
+        return audioSessionState;
+      },
+      onstatechange: null,
+    };
+    window.navigator.audioSession = audioSession;
+  }
 
   Object.defineProperty(window.HTMLMediaElement.prototype, 'srcObject', {
     get() {
@@ -552,6 +575,7 @@ async function main() {
       supportDirectOutputPicker: true,
       supportSinkChange: true,
       supportRtc: true,
+      supportAudioSession: true,
       outputLabel: 'Parlante Bluetooth del teléfono',
       selectedOutputLabel: 'Parlante Bluetooth del teléfono',
     },
@@ -565,6 +589,7 @@ async function main() {
       supportDirectOutputPicker: false,
       supportSinkChange: false,
       supportRtc: false,
+      supportAudioSession: false,
       outputLabel: 'Parlante Bluetooth del sistema',
       selectedOutputLabel: 'Parlante Bluetooth del sistema',
     },
@@ -582,6 +607,7 @@ async function main() {
       selectedOutputLabel: 'Parlante Bluetooth bloqueado',
       microphonePermissionState: 'prompt',
       denyGetUserMedia: true,
+      supportAudioSession: true,
     },
   );
 
@@ -631,6 +657,7 @@ async function main() {
     await waitFor(() => phone.window.__micRoomDebug.snapshot().localPlaybackActive === true, { label: 'modo local continuo activo' });
     addCheck('Micrófono Bluetooth continuo inicia', phone.window.__micRoomDebug.snapshot().localPlaybackActive === true);
     addCheck('Micrófono continuo deja el track habilitado', phone.window.__micRoomDebug.snapshot().localTrack?.enabled === true);
+    addCheck('AudioSession entra en play-and-record durante captura cuando está disponible', phone.window.__micRoomDebug.snapshot().audioSessionType === 'play-and-record');
     addCheck('Modo compatibilidad Bluetooth usa audio multimedia local', phone.window.__micRoomDebug.snapshot().usingMediaElementMonitor === true && phone.window.__micRoomDebug.snapshot().localMonitorHasStream === true && phone.window.__micRoomDebug.snapshot().localMonitorPaused === false);
     addCheck('Diagnóstico marca permiso y captura cuando el micrófono arranca', /concedido/i.test(phone.window.__micRoomDebug.snapshot().diagnostics.permission) && /capturando/i.test(phone.window.__micRoomDebug.snapshot().diagnostics.capture));
     addCheck('Diagnóstico resume que el emisor debería oírse al hablar', /deber[ií]a o[ií]rse|est[aá] hablando/i.test(phone.window.__micRoomDebug.snapshot().diagnosticSummary), phone.window.__micRoomDebug.snapshot().diagnosticSummary);
@@ -638,6 +665,7 @@ async function main() {
     await click(phone.window, '#localStopBtn');
     await waitFor(() => phone.window.__micRoomDebug.snapshot().localPlaybackActive === false, { label: 'modo local continuo detenido' });
     addCheck('Micrófono Bluetooth continuo se detiene', phone.window.__micRoomDebug.snapshot().localPlaybackActive === false);
+    addCheck('AudioSession vuelve a auto o playback al detener captura', ['auto', 'playback'].includes(phone.window.__micRoomDebug.snapshot().audioSessionType));
 
     const localPttButton = phone.window.document.querySelector('#localPttBtn');
     localPttButton.dispatchEvent(new phone.window.PointerEvent('pointerdown', { bubbles: true }));

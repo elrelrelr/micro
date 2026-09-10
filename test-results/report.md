@@ -1,9 +1,9 @@
 # Reporte de pruebas de Mic Room
 
 - URL base: http://127.0.0.1:3000
-- Inicio: 2026-09-10T15:46:47.271Z
-- Fin: 2026-09-10T15:46:47.989Z
-- Checks OK: 31
+- Inicio: 2026-09-10T16:04:09.860Z
+- Fin: 2026-09-10T16:04:10.518Z
+- Checks OK: 33
 - Checks fallidos: 0
 - Advertencias: 2
 
@@ -12,7 +12,7 @@
 - ✅ **HTML carga Bootstrap local**
 - ✅ **HTML incluye manifest PWA**
 - ✅ **HTML incluye layout responsive Bootstrap**
-- ✅ **API health responde** — {"ok":true,"rooms":0,"time":"2026-09-10T15:46:47.284Z"}
+- ✅ **API health responde** — {"ok":true,"rooms":0,"time":"2026-09-10T16:04:09.873Z"}
 - ✅ **Manifest PWA responde**
 - ✅ **Service worker responde**
 - ✅ **App arranca fija en modo Bluetooth local** — {"modeChosen":true,"deviceMode":"sender","senderTarget":"bluetooth-local"}
@@ -24,10 +24,12 @@
 - ✅ **Selector directo deja el nombre del parlante**
 - ✅ **Micrófono Bluetooth continuo inicia**
 - ✅ **Micrófono continuo deja el track habilitado**
+- ✅ **AudioSession entra en play-and-record durante captura cuando está disponible**
 - ✅ **Modo compatibilidad Bluetooth usa audio multimedia local**
 - ✅ **Diagnóstico marca permiso y captura cuando el micrófono arranca**
 - ✅ **Diagnóstico resume que el emisor debería oírse al hablar** — Resumen: el emisor está hablando y debería oírse por Parlante Bluetooth del teléfono. La app lo está reproduciendo como audio multimedia normal para ayudar al Bluetooth.
 - ✅ **Micrófono Bluetooth continuo se detiene**
+- ✅ **AudioSession vuelve a auto o playback al detener captura**
 - ✅ **Pulsa para hablar Bluetooth activa el micrófono al mantener pulsado**
 - ✅ **Pulsa para hablar Bluetooth se detiene al soltar**
 - ✅ **Calidad alta actualiza el bitrate local a 72 kbps**

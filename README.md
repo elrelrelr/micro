@@ -19,6 +19,8 @@ El proyecto todavía conserva el código de sala en el repositorio, pero en esta
 
 También se fuerza un **modo compatibilidad Bluetooth**: la voz del micrófono se reproduce como audio multimedia normal del dispositivo para aumentar la probabilidad de que el sistema la mande al parlante Bluetooth igual que una canción o un video.
 
+En dispositivos compatibles, la app también intenta usar **AudioSession** para mantener mejor la ruta de audio mientras el micrófono está activo.
+
 ## Flujo actual
 
 1. conecta el parlante Bluetooth desde el sistema del teléfono,
@@ -26,8 +28,9 @@ También se fuerza un **modo compatibilidad Bluetooth**: la voz del micrófono s
 3. si el navegador lo permite, elige la salida Bluetooth desde la app,
 4. si no lo permite, deja el parlante Bluetooth como salida multimedia del sistema,
 5. la app intentará reproducir tu voz como audio multimedia normal,
-6. usa **Micrófono Bluetooth continuo** o **Pulsa para hablar por Bluetooth**,
-7. ajusta calidad y filtros si quieres.
+6. si el navegador soporta AudioSession, la app intentará fijar el modo `play-and-record` durante la captura,
+7. usa **Micrófono Bluetooth continuo** o **Pulsa para hablar por Bluetooth**,
+8. ajusta calidad y filtros si quieres.
 
 ## Controles principales
 
@@ -97,7 +100,7 @@ NODE_PATH=/tmp/microom-test-tools/node_modules node /home/user/mic-room/tests/si
 
 Resultado:
 
-- **31 checks OK**
+- **33 checks OK**
 - **0 fallos**
 - **2 advertencias esperadas**
 
@@ -109,6 +112,7 @@ Se validó:
 - selector directo de salida cuando el navegador lo soporta,
 - mensaje de fallback cuando el navegador no soporta cambiar la salida,
 - modo compatibilidad Bluetooth por audio multimedia local,
+- uso de AudioSession durante captura cuando está disponible,
 - micrófono Bluetooth continuo,
 - botón **Pulsa para hablar por Bluetooth**,
 - calidad / bitrate,
@@ -120,6 +124,7 @@ Se validó:
 - La web no empareja Bluetooth por sí sola; el emparejamiento se hace en el sistema.
 - Muchos navegadores móviles **no** permiten cambiar la salida Bluetooth desde la web.
 - En esos casos, debes dejar el parlante Bluetooth como salida multimedia del sistema del teléfono.
+- Incluso con AudioSession y reproducción como audio multimedia, algunos teléfonos o navegadores siguen cambiando o bloqueando la ruta al activar el micrófono.
 - Bluetooth real no se puede probar físicamente dentro de este sandbox.
 
 ## Archivos importantes

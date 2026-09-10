@@ -26,10 +26,11 @@ Las otras funciones quedaron ocultas para que el manejo sea más simple.
    - si falla en **Micrófono capturando**, el navegador no abrió el micro,
    - si falla en **Voz saliendo del emisor**, el micro está abierto pero aún no está hablando,
    - si falla en **Destino listo** o **Salida de audio**, el problema está en reproducción o en la ruta Bluetooth.
-7. Usa una de estas dos opciones:
+7. Si tu navegador soporta AudioSession, la app intentará fijar mejor la ruta al entrar en modo de captura.
+8. Usa una de estas dos opciones:
    - **Micrófono Bluetooth continuo**
    - **Pulsa para hablar por Bluetooth**
-8. Ajusta **Audio, calidad y filtros** si quieres.
+9. Ajusta **Audio, calidad y filtros** si quieres.
 
 ---
 
@@ -89,7 +90,7 @@ Para este flujo Bluetooth local, GitHub Pages sí basta.
 
 Última validación automática:
 
-- **31 checks OK**
+- **33 checks OK**
 - **0 fallos**
 - **2 advertencias esperadas**
 
@@ -101,6 +102,7 @@ Se probó:
 - selector directo de salida cuando existe,
 - fallback a Bluetooth del sistema cuando no existe,
 - compatibilidad reproduciendo la voz como audio multimedia local,
+- uso de AudioSession cuando existe,
 - micrófono continuo,
 - pulsa para hablar,
 - calidad,

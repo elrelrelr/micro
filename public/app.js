@@ -135,6 +135,8 @@ const state = {
   detectedBluetoothOutputLabel: '',
   lastAudioErrorMessage: '',
   mediaElementMonitorLogged: false,
+  audioSessionType: 'unsupported',
+  audioSessionState: 'unknown',
   deferredInstallPrompt: null,
   qrDataUrl: '',
   previewToken: 0,
@@ -1032,6 +1034,59 @@ function shouldUseMediaElementMonitor() {
   return isBluetoothOnlyMode() || (isSenderMode() && isBluetoothTarget());
 }
 
+function refreshAudioSessionSnapshot() {
+  try {
+    if (!('audioSession' in navigator) || !navigator.audioSession) {
+      state.audioSessionType = 'unsupported';
+      state.audioSessionState = 'unknown';
+      return;
+    }
+    state.audioSessionType = navigator.audioSession.type || 'auto';
+    state.audioSessionState = navigator.audioSession.state || 'unknown';
+  } catch {
+    state.audioSessionType = 'error';
+    state.audioSessionState = 'unknown';
+  }
+}
+
+async function setAudioSessionTypeSafe(type, { silent = true } = {}) {
+  try {
+    if (!('audioSession' in navigator) || !navigator.audioSession) {
+      refreshAudioSessionSnapshot();
+      return false;
+    }
+    navigator.audioSession.type = type;
+    refreshAudioSessionSnapshot();
+    if (!silent) {
+      log(`AudioSession ajustada a ${state.audioSessionType}.`, 'info');
+    }
+    return true;
+  } catch (error) {
+    refreshAudioSessionSnapshot();
+    log(`No pude ajustar AudioSession a ${type}: ${error.message}`, 'warn');
+    return false;
+  }
+}
+
+async function prepareAudioSessionForCapture() {
+  refreshAudioSessionSnapshot();
+  if (!('audioSession' in navigator) || !navigator.audioSession) return;
+  await setAudioSessionTypeSafe('auto');
+}
+
+async function finalizeAudioSessionForCapture() {
+  refreshAudioSessionSnapshot();
+  if (!('audioSession' in navigator) || !navigator.audioSession) return;
+  await setAudioSessionTypeSafe('play-and-record');
+}
+
+async function resetAudioSessionAfterCapture() {
+  refreshAudioSessionSnapshot();
+  if (!('audioSession' in navigator) || !navigator.audioSession) return;
+  await setAudioSessionTypeSafe('playback');
+  await setAudioSessionTypeSafe('auto');
+}
+
 async function unlockAudio() {
   try {
     if (state.processingContext?.state === 'suspended') {
@@ -1221,7 +1276,9 @@ async function selectBluetoothOutput() {
 async function ensureAudioPipeline() {
   if (state.processingContext && state.localTrack && state.rawTrack?.readyState === 'live') return;
 
+  await prepareAudioSessionForCapture();
   const stream = await navigator.mediaDevices.getUserMedia(getCaptureConstraints());
+  await finalizeAudioSessionForCapture();
   const rawTrack = stream.getAudioTracks()[0];
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) throw new Error('Este navegador no soporta AudioContext');
@@ -1354,6 +1411,7 @@ async function cleanupAudioIfIdle() {
     }
   }
   try { await state.processingContext?.close(); } catch {}
+  await resetAudioSessionAfterCapture();
 
   state.rawStream = null;
   state.processedStream = null;
@@ -2279,6 +2337,8 @@ function getDebugSnapshot() {
     localModeStatus: els.localModeStatus?.textContent || '',
     localOutputStatus: els.localOutputStatus?.textContent || '',
     microphonePermissionState: state.microphonePermissionState,
+    audioSessionType: state.audioSessionType,
+    audioSessionState: state.audioSessionState,
     usingMediaElementMonitor: shouldUseMediaElementMonitor(),
     localMonitorHasStream: Boolean(els.localMonitor?.srcObject),
     localMonitorPaused: els.localMonitor?.paused ?? true,
@@ -2490,6 +2550,15 @@ function wireUi() {
 
 async function init() {
   wireUi();
+  refreshAudioSessionSnapshot();
+  if ('audioSession' in navigator && navigator.audioSession) {
+    try {
+      navigator.audioSession.onstatechange = () => {
+        refreshAudioSessionSnapshot();
+        refreshDiagnostics();
+      };
+    } catch {}
+  }
   schedulePermissionRefresh();
   const lacksRequiredAudio = !navigator.mediaDevices?.getUserMedia;
   const lacksRtcForRoomMode = !window.RTCPeerConnection && !isBluetoothOnlyMode();

@@ -1,6 +1,6 @@
 {
   "baseUrl": "http://127.0.0.1:3000",
-  "startedAt": "2026-09-10T15:46:47.271Z",
+  "startedAt": "2026-09-10T16:04:09.860Z",
   "checks": [
     {
       "name": "Servidor JS existe",
@@ -25,7 +25,7 @@
     {
       "name": "API health responde",
       "pass": true,
-      "details": "{\"ok\":true,\"rooms\":0,\"time\":\"2026-09-10T15:46:47.284Z\"}"
+      "details": "{\"ok\":true,\"rooms\":0,\"time\":\"2026-09-10T16:04:09.873Z\"}"
     },
     {
       "name": "Manifest PWA responde",
@@ -83,6 +83,11 @@
       "details": ""
     },
     {
+      "name": "AudioSession entra en play-and-record durante captura cuando está disponible",
+      "pass": true,
+      "details": ""
+    },
+    {
       "name": "Modo compatibilidad Bluetooth usa audio multimedia local",
       "pass": true,
       "details": ""
@@ -99,6 +104,11 @@
     },
     {
       "name": "Micrófono Bluetooth continuo se detiene",
+      "pass": true,
+      "details": ""
+    },
+    {
+      "name": "AudioSession vuelve a auto o playback al detener captura",
       "pass": true,
       "details": ""
     },
@@ -163,9 +173,9 @@
     "La salida Bluetooth final en el teléfono depende del navegador móvil y del sistema operativo reales; aquí validé la lógica, la UI y el fallback de salida por sistema."
   ],
   "errors": [],
-  "finishedAt": "2026-09-10T15:46:47.989Z",
+  "finishedAt": "2026-09-10T16:04:10.518Z",
   "summary": {
-    "passed": 31,
+    "passed": 33,
     "failed": 0,
     "warnings": 2,
     "errors": 0
