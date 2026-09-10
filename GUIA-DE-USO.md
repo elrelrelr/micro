@@ -19,11 +19,17 @@ Las otras funciones quedaron ocultas para que el manejo sea más simple.
 5. Si aparece el aviso de que el navegador no soporta la selección directa, no es un fallo de la app:
    - deja el parlante Bluetooth conectado en el sistema,
    - úsalo como salida multimedia del teléfono,
+   - la app intentará sacar tu voz como audio multimedia normal,
    - y luego habla desde la web.
-6. Usa una de estas dos opciones:
+6. Mira el bloque **Diagnóstico en vivo**:
+   - si falla en **Permiso de micrófono**, revisa permisos del sitio y del navegador,
+   - si falla en **Micrófono capturando**, el navegador no abrió el micro,
+   - si falla en **Voz saliendo del emisor**, el micro está abierto pero aún no está hablando,
+   - si falla en **Destino listo** o **Salida de audio**, el problema está en reproducción o en la ruta Bluetooth.
+7. Usa una de estas dos opciones:
    - **Micrófono Bluetooth continuo**
    - **Pulsa para hablar por Bluetooth**
-7. Ajusta **Audio, calidad y filtros** si quieres.
+8. Ajusta **Audio, calidad y filtros** si quieres.
 
 ---
 
@@ -83,7 +89,7 @@ Para este flujo Bluetooth local, GitHub Pages sí basta.
 
 Última validación automática:
 
-- **25 checks OK**
+- **31 checks OK**
 - **0 fallos**
 - **2 advertencias esperadas**
 
@@ -94,6 +100,7 @@ Se probó:
 - detección de permiso denegado,
 - selector directo de salida cuando existe,
 - fallback a Bluetooth del sistema cuando no existe,
+- compatibilidad reproduciendo la voz como audio multimedia local,
 - micrófono continuo,
 - pulsa para hablar,
 - calidad,

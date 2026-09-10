@@ -134,6 +134,7 @@ const state = {
   microphonePermissionState: 'unknown',
   detectedBluetoothOutputLabel: '',
   lastAudioErrorMessage: '',
+  mediaElementMonitorLogged: false,
   deferredInstallPrompt: null,
   qrDataUrl: '',
   previewToken: 0,
@@ -329,9 +330,9 @@ function refreshDiagnostics() {
   } else if (state.localTrack && !state.localTrack.enabled) {
     summary = 'Resumen: el micrófono ya abrió, pero la voz está silenciada o esperando el gesto de hablar.';
   } else if ((isBluetoothOnlyMode() || isBluetoothTarget()) && !state.canChangeSink) {
-    summary = 'Resumen: la app ya puede hablar, pero la salida final depende del Bluetooth configurado en el sistema.';
+    summary = 'Resumen: la app ya puede hablar y está intentando salir como audio multimedia normal, pero la salida final depende del Bluetooth configurado en el sistema.';
   } else if ((isBluetoothOnlyMode() || isBluetoothTarget()) && state.localPlaybackActive) {
-    summary = `Resumen: el emisor está hablando y debería oírse por ${state.selectedOutputLabel || state.detectedBluetoothOutputLabel || 'la salida del sistema'}.`;
+    summary = `Resumen: el emisor está hablando y debería oírse por ${state.selectedOutputLabel || state.detectedBluetoothOutputLabel || 'la salida del sistema'}. La app lo está reproduciendo como audio multimedia normal para ayudar al Bluetooth.`;
   } else if (state.roomSendActive || hasRemoteAudioActive()) {
     summary = 'Resumen: el audio ya está fluyendo; si no lo oyes, el bloqueo probable está en la reproducción o la salida elegida.';
   }
@@ -796,8 +797,8 @@ function renderWorkflowMode() {
     els.connectionCardHint.textContent = 'Aquí solo usamos este teléfono como micrófono local. No hay salas, claves ni receptor web.';
     els.deviceModeHint.innerHTML = 'Modo fijo: <strong>Emisor</strong> con <strong>Bluetooth local</strong>.';
     els.outputCardTitle.textContent = 'Salida del teléfono';
-    els.outputCardHint.textContent = 'Si el navegador no deja cambiar la salida desde aquí, usa el parlante Bluetooth como salida multimedia del sistema del teléfono.';
-    els.roomModeHint.innerHTML = 'Conecta el parlante Bluetooth en el sistema del teléfono y usa <strong>Micrófono Bluetooth continuo</strong> o <strong>Pulsa para hablar por Bluetooth</strong>.';
+    els.outputCardHint.textContent = 'Si el navegador no deja cambiar la salida desde aquí, usa el parlante Bluetooth como salida multimedia del sistema del teléfono. La app intentará reproducir tu voz como si fuera audio normal del dispositivo.';
+    els.roomModeHint.innerHTML = 'Conecta el parlante Bluetooth en el sistema del teléfono y usa <strong>Micrófono Bluetooth continuo</strong> o <strong>Pulsa para hablar por Bluetooth</strong>. La voz se intentará sacar como audio multimedia normal.';
     els.peerSummaryText.textContent = state.localPttActive
       ? 'Hablando por Bluetooth local.'
       : state.localPlaybackActive
@@ -1027,6 +1028,10 @@ function needsLocalMonitor() {
   return state.localPlaybackActive || (state.roomSendActive && els.localMonitorCheckbox.checked);
 }
 
+function shouldUseMediaElementMonitor() {
+  return isBluetoothOnlyMode() || (isSenderMode() && isBluetoothTarget());
+}
+
 async function unlockAudio() {
   try {
     if (state.processingContext?.state === 'suspended') {
@@ -1174,7 +1179,7 @@ async function setAudioSink(audioEl) {
 
 async function applyOutputSelection() {
   const sinkId = state.preferredSinkId || 'default';
-  if (state.processingContext && typeof state.processingContext.setSinkId === 'function') {
+  if (state.processingContext && typeof state.processingContext.setSinkId === 'function' && !shouldUseMediaElementMonitor()) {
     try {
       await state.processingContext.setSinkId(sinkId);
     } catch (error) {
@@ -1280,15 +1285,17 @@ async function ensureAudioPipeline() {
 
 async function syncLocalPlayback() {
   const shouldMonitor = needsLocalMonitor();
+  const useMediaElementMonitor = shouldUseMediaElementMonitor();
   if (!state.processingContext || !state.filterNodes) {
     if (!shouldMonitor) {
       try { els.localMonitor.pause(); } catch {}
       els.localMonitor.srcObject = null;
+      state.mediaElementMonitorLogged = false;
     }
     return;
   }
 
-  if (typeof state.processingContext.setSinkId === 'function') {
+  if (!useMediaElementMonitor && typeof state.processingContext.setSinkId === 'function') {
     if (shouldMonitor && !state.monitorConnected) {
       state.filterNodes.monitorGain.connect(state.processingContext.destination);
       state.monitorConnected = true;
@@ -1298,16 +1305,31 @@ async function syncLocalPlayback() {
     }
     try { els.localMonitor.pause(); } catch {}
     els.localMonitor.srcObject = null;
+    state.mediaElementMonitorLogged = false;
     return;
+  }
+
+  if (state.monitorConnected && state.processingContext) {
+    try { state.filterNodes.monitorGain.disconnect(state.processingContext.destination); } catch {}
+    state.monitorConnected = false;
   }
 
   if (shouldMonitor) {
     els.localMonitor.srcObject = state.processedStream;
     await setAudioSink(els.localMonitor);
-    try { await els.localMonitor.play(); } catch {}
+    try {
+      await els.localMonitor.play();
+      if (useMediaElementMonitor && !state.mediaElementMonitorLogged) {
+        state.mediaElementMonitorLogged = true;
+        log('Reproduciendo la voz como audio multimedia local para mejorar la compatibilidad con Bluetooth.', 'info');
+      }
+    } catch (error) {
+      log(`El navegador bloqueó la reproducción local: ${error.message}`, 'warn');
+    }
   } else {
     try { els.localMonitor.pause(); } catch {}
     els.localMonitor.srcObject = null;
+    state.mediaElementMonitorLogged = false;
   }
 }
 
@@ -1409,10 +1431,14 @@ async function startLocalMode({ pushToTalk = false, silentToast = false } = {}) 
     state.lastAudioErrorMessage = '';
     updateButtons();
     renderWorkflowMode();
+    const outputLabel = state.selectedOutputLabel || state.detectedBluetoothOutputLabel || 'la salida del sistema';
+    const compatibilityNote = shouldUseMediaElementMonitor()
+      ? ' La voz se está reproduciendo como audio multimedia normal del dispositivo para mejorar la compatibilidad con Bluetooth.'
+      : '';
     setLocalStatus(
       pushToTalk
-        ? `Pulsa para hablar activo. Tu voz debería salir por ${state.selectedOutputLabel || 'la salida elegida'} mientras mantienes el botón presionado.`
-        : `Bluetooth local activo. Audio saliendo por ${state.selectedOutputLabel || 'la salida elegida'}.`,
+        ? `Pulsa para hablar activo. Tu voz debería salir por ${outputLabel} mientras mantienes el botón presionado.${compatibilityNote}`
+        : `Bluetooth local activo. Audio saliendo por ${outputLabel}.${compatibilityNote}`,
       'success',
     );
     if (!silentToast) {
@@ -2253,6 +2279,9 @@ function getDebugSnapshot() {
     localModeStatus: els.localModeStatus?.textContent || '',
     localOutputStatus: els.localOutputStatus?.textContent || '',
     microphonePermissionState: state.microphonePermissionState,
+    usingMediaElementMonitor: shouldUseMediaElementMonitor(),
+    localMonitorHasStream: Boolean(els.localMonitor?.srcObject),
+    localMonitorPaused: els.localMonitor?.paused ?? true,
     diagnosticSummary: els.diagSummary?.textContent || '',
     diagnostics: {
       permission: els.diagPermissionText?.textContent || '',

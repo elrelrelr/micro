@@ -8,7 +8,7 @@ Mic Room quedó enfocado ahora en un uso muy simple:
 
 La interfaz publicada oculta las funciones de sala, receptor, QR y conexión por red para concentrarse en el flujo Bluetooth local.
 
-Además ahora muestra un bloque de **Diagnóstico en vivo** con 5 luces:
+Además muestra un bloque de **Diagnóstico en vivo** con 5 luces:
 - permiso de micrófono,
 - captura del emisor,
 - voz saliendo del emisor,
@@ -17,14 +17,17 @@ Además ahora muestra un bloque de **Diagnóstico en vivo** con 5 luces:
 
 El proyecto todavía conserva el código de sala en el repositorio, pero en esta versión visible de la web quedó escondido para no confundir.
 
+También se fuerza un **modo compatibilidad Bluetooth**: la voz del micrófono se reproduce como audio multimedia normal del dispositivo para aumentar la probabilidad de que el sistema la mande al parlante Bluetooth igual que una canción o un video.
+
 ## Flujo actual
 
 1. conecta el parlante Bluetooth desde el sistema del teléfono,
 2. abre la web,
 3. si el navegador lo permite, elige la salida Bluetooth desde la app,
 4. si no lo permite, deja el parlante Bluetooth como salida multimedia del sistema,
-5. usa **Micrófono Bluetooth continuo** o **Pulsa para hablar por Bluetooth**,
-6. ajusta calidad y filtros si quieres.
+5. la app intentará reproducir tu voz como audio multimedia normal,
+6. usa **Micrófono Bluetooth continuo** o **Pulsa para hablar por Bluetooth**,
+7. ajusta calidad y filtros si quieres.
 
 ## Controles principales
 
@@ -94,15 +97,18 @@ NODE_PATH=/tmp/microom-test-tools/node_modules node /home/user/mic-room/tests/si
 
 Resultado:
 
-- **25 checks OK**
+- **31 checks OK**
 - **0 fallos**
 - **2 advertencias esperadas**
 
 Se validó:
 - arranque directo en modo Bluetooth local,
 - ocultamiento de funciones de sala y receptor,
+- diagnóstico visible desde el inicio,
+- identificación de permiso denegado,
 - selector directo de salida cuando el navegador lo soporta,
 - mensaje de fallback cuando el navegador no soporta cambiar la salida,
+- modo compatibilidad Bluetooth por audio multimedia local,
 - micrófono Bluetooth continuo,
 - botón **Pulsa para hablar por Bluetooth**,
 - calidad / bitrate,

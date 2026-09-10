@@ -1,6 +1,6 @@
 {
   "baseUrl": "http://127.0.0.1:3000",
-  "startedAt": "2026-09-09T22:33:06.508Z",
+  "startedAt": "2026-09-10T15:46:47.271Z",
   "checks": [
     {
       "name": "Servidor JS existe",
@@ -25,7 +25,7 @@
     {
       "name": "API health responde",
       "pass": true,
-      "details": "{\"ok\":true,\"rooms\":0,\"time\":\"2026-09-09T22:33:06.523Z\"}"
+      "details": "{\"ok\":true,\"rooms\":0,\"time\":\"2026-09-10T15:46:47.284Z\"}"
     },
     {
       "name": "Manifest PWA responde",
@@ -83,6 +83,11 @@
       "details": ""
     },
     {
+      "name": "Modo compatibilidad Bluetooth usa audio multimedia local",
+      "pass": true,
+      "details": ""
+    },
+    {
       "name": "Diagnóstico marca permiso y captura cuando el micrófono arranca",
       "pass": true,
       "details": ""
@@ -90,7 +95,7 @@
     {
       "name": "Diagnóstico resume que el emisor debería oírse al hablar",
       "pass": true,
-      "details": "Resumen: el emisor está hablando y debería oírse por Parlante Bluetooth del teléfono."
+      "details": "Resumen: el emisor está hablando y debería oírse por Parlante Bluetooth del teléfono. La app lo está reproduciendo como audio multimedia normal para ayudar al Bluetooth."
     },
     {
       "name": "Micrófono Bluetooth continuo se detiene",
@@ -138,6 +143,11 @@
       "details": ""
     },
     {
+      "name": "Incluso sin selector, la voz se enruta como audio multimedia local",
+      "pass": true,
+      "details": ""
+    },
+    {
       "name": "El Bluetooth local también se detiene correctamente en navegadores limitados",
       "pass": true,
       "details": ""
@@ -153,9 +163,9 @@
     "La salida Bluetooth final en el teléfono depende del navegador móvil y del sistema operativo reales; aquí validé la lógica, la UI y el fallback de salida por sistema."
   ],
   "errors": [],
-  "finishedAt": "2026-09-09T22:33:07.203Z",
+  "finishedAt": "2026-09-10T15:46:47.989Z",
   "summary": {
-    "passed": 29,
+    "passed": 31,
     "failed": 0,
     "warnings": 2,
     "errors": 0

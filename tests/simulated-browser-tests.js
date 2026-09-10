@@ -631,6 +631,7 @@ async function main() {
     await waitFor(() => phone.window.__micRoomDebug.snapshot().localPlaybackActive === true, { label: 'modo local continuo activo' });
     addCheck('Micrófono Bluetooth continuo inicia', phone.window.__micRoomDebug.snapshot().localPlaybackActive === true);
     addCheck('Micrófono continuo deja el track habilitado', phone.window.__micRoomDebug.snapshot().localTrack?.enabled === true);
+    addCheck('Modo compatibilidad Bluetooth usa audio multimedia local', phone.window.__micRoomDebug.snapshot().usingMediaElementMonitor === true && phone.window.__micRoomDebug.snapshot().localMonitorHasStream === true && phone.window.__micRoomDebug.snapshot().localMonitorPaused === false);
     addCheck('Diagnóstico marca permiso y captura cuando el micrófono arranca', /concedido/i.test(phone.window.__micRoomDebug.snapshot().diagnostics.permission) && /capturando/i.test(phone.window.__micRoomDebug.snapshot().diagnostics.capture));
     addCheck('Diagnóstico resume que el emisor debería oírse al hablar', /deber[ií]a o[ií]rse|est[aá] hablando/i.test(phone.window.__micRoomDebug.snapshot().diagnosticSummary), phone.window.__micRoomDebug.snapshot().diagnosticSummary);
 
@@ -689,6 +690,7 @@ async function main() {
       return s.localPlaybackActive === true && s.localPttActive === true && s.localTrack?.enabled === true;
     }, { timeout: 10000, label: 'local ptt activo telefono sin selector' });
     addCheck('El Bluetooth local funciona aunque el navegador no deje elegir la salida', limitedPhone.window.__micRoomDebug.snapshot().localPttActive === true);
+    addCheck('Incluso sin selector, la voz se enruta como audio multimedia local', limitedPhone.window.__micRoomDebug.snapshot().localMonitorHasStream === true && limitedPhone.window.__micRoomDebug.snapshot().localMonitorPaused === false);
 
     limitedPttButton.dispatchEvent(new limitedPhone.window.PointerEvent('pointerup', { bubbles: true }));
     await waitFor(() => {
