@@ -70,14 +70,19 @@ El proyecto ya incluye:
 - si publicas la **raíz** del repositorio, GitHub Pages abrirá `index.html` y te mandará a `docs/`
 - si publicas directamente **/docs**, también funciona
 
-## Arranque local
+## Instalación y Uso
 
 ### Windows
-Haz doble clic en:
+1. Extrae (descomprime) el archivo `.zip` de Windows (por ejemplo, `Microfono-Bluetooth-Windows-1.0.0.zip`).
+2. Entra en la carpeta extraída y ejecuta el archivo `.exe` para iniciar el programa.
 
-- `INICIAR-MIC-ROOM.bat`
+### Móvil (Android)
+1. Desinstala versiones anteriores de la aplicación si las tienes instaladas.
+2. Instala el archivo `.apk` (por ejemplo, `Microfono-Bluetooth-v2.1.apk`).
 
-### Manual
+> **💡 Recomendación:** Se recomienda activar el **antipitido** (cancelación de acople/eco) para evitar ese molesto sonido agudo (feedback) mientras usas el micrófono.
+
+### Arranque Manual (Código fuente)
 ```bash
 cd mic-room
 node server.js
